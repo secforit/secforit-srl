@@ -22,9 +22,9 @@ const differentiators = [
 ]
 
 const stats = [
-  { value: 10, suffix: "+", label: "Years Experience", icon: Award },
-  { value: 200, suffix: "+", label: "Clients Secured", icon: Users },
-  { value: 500, suffix: "+", label: "Assessments Done", icon: FileCheck },
+  { value: 6, suffix: "+", label: "Years Experience", icon: Award },
+  { value: 7, suffix: "+", label: "Clients Secured", icon: Users },
+  { value: 20, suffix: "+", label: "Assessments Done", icon: FileCheck },
 ]
 
 function AnimatedCounter({

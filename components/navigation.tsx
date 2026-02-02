@@ -48,7 +48,7 @@ export function Navigation() {
             className="flex items-center group"
           >
             <Image
-              src="/logo.png"
+              src="/logo-secforit.svg"
               alt="SECFORIT - Security first"
               width={180}
               height={50}

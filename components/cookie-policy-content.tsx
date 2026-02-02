@@ -222,6 +222,90 @@ export function CookiePolicyContent() {
   )
 }
 
+function renderInline(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="text-foreground font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+    return <span key={i}>{part}</span>
+  })
+}
+
+function renderContent(content: string) {
+  // Split content into blocks separated by blank lines
+  const blocks = content.split(/\n\n/)
+  const result: React.ReactNode[] = []
+
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i].trim()
+    if (!block) continue
+
+    // Check if block is a markdown table (lines starting with |)
+    const lines = block.split("\n")
+    const isTable = lines.length >= 2 && lines[0].startsWith("|") && lines[1].startsWith("|")
+
+    if (isTable) {
+      // Parse header row
+      const headerCells = lines[0]
+        .split("|")
+        .filter((c) => c.trim() !== "")
+        .map((c) => c.trim())
+
+      // Skip separator row (line 1), parse data rows
+      const dataRows = lines.slice(2).filter((line) => line.startsWith("|"))
+
+      result.push(
+        <div key={i} className="overflow-x-auto my-2">
+          <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
+            <thead>
+              <tr className="bg-primary/5">
+                {headerCells.map((cell, ci) => (
+                  <th
+                    key={ci}
+                    className="px-4 py-2.5 text-left text-foreground font-semibold border-b border-border"
+                  >
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dataRows.map((row, ri) => {
+                const cells = row
+                  .split("|")
+                  .filter((c) => c.trim() !== "")
+                  .map((c) => c.trim())
+                return (
+                  <tr key={ri} className="border-b border-border last:border-b-0">
+                    {cells.map((cell, ci) => (
+                      <td key={ci} className="px-4 py-2.5 text-muted-foreground">
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )
+    } else {
+      // Regular text block — render with inline bold and preserve line breaks
+      result.push(
+        <p key={i} className="whitespace-pre-line">
+          {renderInline(block)}
+        </p>
+      )
+    }
+  }
+
+  return result
+}
+
 function PolicySection({
   section,
 }: {
@@ -253,17 +337,8 @@ function PolicySection({
       <h2 className="text-xl md:text-2xl font-bold text-foreground mb-4">
         {section.title}
       </h2>
-      <div className="text-muted-foreground leading-relaxed whitespace-pre-line text-sm md:text-base">
-        {section.content.split(/(\*\*[^*]+\*\*)/).map((part, i) => {
-          if (part.startsWith("**") && part.endsWith("**")) {
-            return (
-              <strong key={i} className="text-foreground font-semibold">
-                {part.slice(2, -2)}
-              </strong>
-            )
-          }
-          return <span key={i}>{part}</span>
-        })}
+      <div className="text-muted-foreground leading-relaxed text-sm md:text-base space-y-4">
+        {renderContent(section.content)}
       </div>
     </div>
   )

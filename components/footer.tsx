@@ -31,7 +31,7 @@ export function Footer() {
               className="flex items-center mb-4 group"
             >
               <Image
-                src="/logo-secforit.svg"
+                src="/Logo-SECFORIT.png"
                 alt="SECFORIT - Security first"
                 width={160}
                 height={44}

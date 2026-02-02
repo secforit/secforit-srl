@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
   Mail,
+  Phone,
   Copy,
   Check,
   Loader2,
@@ -17,12 +18,25 @@ import {
   Linkedin,
 } from "lucide-react"
 
+// Phone number split into parts to prevent bot/spider scraping from static HTML.
+// Assembled only at runtime via JavaScript — never appears as a single string in source.
+const _p = ["+40", "752", "823", "794"]
+function getPhone() {
+  return _p.join("")
+}
+function getPhoneDisplay() {
+  return `${_p[0]} ${_p[1]} ${_p[2]} ${_p[3]}`
+}
+
 export function ContactPageContent() {
   const [isVisible, setIsVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState("")
   const [copied, setCopied] = useState(false)
+  const [phoneCopied, setPhoneCopied] = useState(false)
   const sectionRef = useRef<HTMLDivElement>(null)
+  const honeypotRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -46,21 +60,46 @@ export function ContactPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitError("")
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          _hp_website: honeypotRef.current?.value || "",
+        }),
+      })
 
-    setIsSubmitting(false)
-    setIsSubmitted(true)
-    setFormData({ name: "", email: "", company: "", message: "" })
+      const data = await res.json()
 
-    setTimeout(() => setIsSubmitted(false), 3000)
+      if (!res.ok) {
+        setSubmitError(data.error || "Something went wrong. Please try again.")
+        setIsSubmitting(false)
+        return
+      }
+
+      setIsSubmitting(false)
+      setIsSubmitted(true)
+      setFormData({ name: "", email: "", company: "", message: "" })
+      setTimeout(() => setIsSubmitted(false), 4000)
+    } catch {
+      setSubmitError("Network error. Please check your connection and try again.")
+      setIsSubmitting(false)
+    }
   }
 
   const copyEmail = async () => {
     await navigator.clipboard.writeText("razvan@secforit.ro")
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const copyPhone = async () => {
+    await navigator.clipboard.writeText(getPhone())
+    setPhoneCopied(true)
+    setTimeout(() => setPhoneCopied(false), 2000)
   }
 
   return (
@@ -117,6 +156,17 @@ export function ContactPageContent() {
                   Send us a Message
                 </h2>
                 <form onSubmit={handleSubmit} className="h-[calc(100%-2.75rem)] flex flex-col">
+                  {/* Honeypot field — hidden from real users, bots will fill it */}
+                  <input
+                    ref={honeypotRef}
+                    type="text"
+                    name="_hp_website"
+                    autoComplete="off"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    style={{ position: "absolute", left: "-9999px", opacity: 0, height: 0, width: 0 }}
+                  />
+
                   <div className="grid sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label htmlFor="name" className="text-foreground">
@@ -205,6 +255,12 @@ export function ContactPageContent() {
                       "Send Message"
                     )}
                   </Button>
+
+                  {submitError && (
+                    <p className="text-sm text-red-500 text-center mt-3">
+                      {submitError}
+                    </p>
+                  )}
                 </form>
               </div>
             </div>
@@ -243,6 +299,32 @@ export function ContactPageContent() {
                     </div>
                     <div className="p-2 text-muted-foreground group-hover:text-primary transition-colors duration-300">
                       {copied ? (
+                        <Check className="w-5 h-5 text-accent" />
+                      ) : (
+                        <Copy className="w-5 h-5" />
+                      )}
+                    </div>
+                  </button>
+                </div>
+
+                {/* Phone Card */}
+                <div className="p-6 rounded-2xl bg-card/50 border border-border backdrop-blur-sm">
+                  <button
+                    onClick={copyPhone}
+                    className="group flex items-center gap-3 w-full p-4 rounded-lg bg-background/50 border border-border hover:border-primary/50 transition-all duration-300"
+                    aria-label="Copy phone number"
+                  >
+                    <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-colors duration-300">
+                      <Phone className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-xs text-muted-foreground">Call us at</p>
+                      <p className="text-foreground font-medium" aria-hidden="true">
+                        {getPhoneDisplay()}
+                      </p>
+                    </div>
+                    <div className="p-2 text-muted-foreground group-hover:text-primary transition-colors duration-300">
+                      {phoneCopied ? (
                         <Check className="w-5 h-5 text-accent" />
                       ) : (
                         <Copy className="w-5 h-5" />

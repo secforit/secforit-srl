@@ -9,8 +9,8 @@ import Link from "next/link"
 const typewriterTexts = [
   "Zero Trust Architecture",
   "Security by Design",
-  "24/7 Threat Monitoring",
-  "Compliance Automation",
+  "Threat Monitoring",
+  "Automation",
 ]
 
 export function HeroSection() {
@@ -78,7 +78,7 @@ export function HeroSection() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/5 mb-8 animate-fade-in">
             <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             <span className="text-sm text-muted-foreground">
-              Protecting Digital Assets Since 2015
+              Protecting Digital Assets Since 2019
             </span>
           </div>
 

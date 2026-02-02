@@ -107,7 +107,7 @@ The site follows a single-page layout with smooth-scroll navigation:
    - Automated Security Solutions
    - Secure Web Development
    - Secure Integration
-4. **About** -- Two-column layout with animated circuit pattern SVG, three differentiators, and animated stat counters (10+ years, 200+ clients, 500+ assessments)
+4. **About** -- Two-column layout with animated circuit pattern SVG, three differentiators, and animated stat counters (6+ years, 10+ clients, 20+ assessments)
 5. **Contact** -- 5-column grid with a validated form (name, email, company, message) and direct contact info with copy-to-clipboard
 6. **Footer** -- Company branding, social links (LinkedIn, Twitter, GitHub), quick links, and legal links
 

@@ -10,8 +10,8 @@ const jetBrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mon
 
 export const metadata: Metadata = {
   title: 'SECFORIT | Cybersecurity by Design',
-  description: 'Zero Trust architecture and expert consulting to defend what matters most. Security consulting, threat analysis, and secure development solutions.',
-  generator: 'v0.app',
+  description: 'Consulting and advising in aid to protect what matters most. Security consulting, threat analysis, and secure development solutions.',
+  generator: 'Razvan',
   icons: {
     icon: [
       {

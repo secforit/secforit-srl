@@ -7,7 +7,7 @@ export function JsonLd() {
     url: 'https://www.secforit.ro',
     logo: 'https://www.secforit.ro/Logo-SECFORIT.png',
     description:
-      'SECFORIT is a cybersecurity consulting company founded by Lisman Razvan, specializing in penetration testing, ISO 27001 compliance, SIEM solutions, Zero Trust architecture, and secure application development.',
+      'SECFORIT is a cybersecurity consulting company founded by Lisman Razvan, specializing in security assessments, ISO 27001 compliance, SIEM solutions, Zero Trust architecture, and secure application development.',
     foundingDate: '2019',
     founder: {
       '@type': 'Person',
@@ -38,7 +38,7 @@ export function JsonLd() {
     },
     knowsAbout: [
       'Cybersecurity',
-      'Penetration Testing',
+      'Security Assessments',
       'ISO 27001',
       'SOC 2',
       'NIST',
@@ -67,10 +67,10 @@ export function JsonLd() {
     },
     url: 'https://www.secforit.ro',
     description:
-      'Lisman Razvan is a cybersecurity expert and the founder of SECFORIT, providing professional security consulting, penetration testing, compliance advisory, and secure development solutions for businesses across Europe.',
+      'Lisman Razvan is a cybersecurity expert and the founder of SECFORIT, providing professional security consulting, security assessments, compliance advisory, and secure development solutions for businesses across Europe.',
     knowsAbout: [
       'Cybersecurity Consulting',
-      'Penetration Testing',
+      'Security Assessments',
       'ISO 27001 Compliance',
       'SOC 2 Auditing',
       'SIEM Deployment',
@@ -95,7 +95,7 @@ export function JsonLd() {
     },
     url: 'https://www.secforit.ro/services',
     description:
-      'Professional cybersecurity services including penetration testing, ISO 27001 compliance consulting, SIEM deployment, DevSecOps implementation, and Zero Trust architecture design.',
+      'Professional cybersecurity services including security assessments, ISO 27001 compliance consulting, SIEM deployment, DevSecOps implementation, and Zero Trust architecture design.',
     serviceType: 'Cybersecurity Consulting',
     areaServed: 'Europe',
     hasOfferCatalog: {
@@ -115,9 +115,9 @@ export function JsonLd() {
           '@type': 'Offer',
           itemOffered: {
             '@type': 'Service',
-            name: 'Penetration Testing & Vulnerability Assessment',
+            name: 'Security Assessments & Vulnerability Assessment',
             description:
-              'Professional penetration testing, red team exercises, vulnerability scanning, cloud security posture assessment for AWS, Azure, and GCP, threat modeling, and dark web monitoring.',
+              'Professional security assessments, red team exercises, vulnerability scanning, cloud security posture assessment for AWS, Azure, and GCP, threat modeling, and dark web monitoring.',
           },
         },
         {
@@ -157,7 +157,7 @@ export function JsonLd() {
     name: 'SECFORIT',
     url: 'https://www.secforit.ro',
     description:
-      'SECFORIT - Cybersecurity consulting and security solutions by Lisman Razvan. Expert penetration testing, compliance, and secure development.',
+      'SECFORIT - Cybersecurity consulting and security solutions by Lisman Razvan. Expert security assessments, compliance, and secure development.',
     publisher: {
       '@type': 'Organization',
       name: 'SECFORIT',

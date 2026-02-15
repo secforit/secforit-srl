@@ -39,8 +39,8 @@ export function Footer() {
               />
             </Link>
             <p className="text-muted-foreground max-w-sm mb-6">
-              SECFORIT, founded by Lisman Razvan, delivers cybersecurity consulting,
-              penetration testing, ISO 27001 compliance, and Zero Trust architecture.
+              SECFORIT delivers cybersecurity consulting,
+              security assessments, ISO 27001 compliance, and Zero Trust architecture.
               Your trusted cybersecurity partner across Europe.
             </p>
             {/* Social Links */}

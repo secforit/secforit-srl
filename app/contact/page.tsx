@@ -6,7 +6,7 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Contact SECFORIT - Get a Cybersecurity Consultation with Lisman Razvan",
   description:
-    "Contact Lisman Razvan at SECFORIT for cybersecurity consulting, penetration testing, compliance advisory, and security solutions. Free initial consultation for businesses.",
+    "Contact Lisman Razvan at SECFORIT for cybersecurity consulting, security assessments, compliance advisory, and security solutions. Free initial consultation for businesses.",
   keywords: [
     'contact cybersecurity consultant',
     'hire cybersecurity expert',
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Contact SECFORIT | Cybersecurity Consulting by Lisman Razvan',
-    description: 'Get in touch with cybersecurity expert Lisman Razvan for consulting, penetration testing, and security solutions.',
+    description: 'Get in touch with cybersecurity expert Lisman Razvan for consulting, security assessments, and security solutions.',
     url: 'https://www.secforit.ro/contact',
   },
 }

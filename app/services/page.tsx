@@ -4,11 +4,11 @@ import { ServicesPageContent } from "@/components/services-page-content"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Cybersecurity Services - Penetration Testing, ISO 27001, SIEM, DevSecOps",
+  title: "Cybersecurity Services - Security Assessments, ISO 27001, SIEM, DevSecOps",
   description:
-    "SECFORIT cybersecurity services by Lisman Razvan: penetration testing, vulnerability assessment, ISO 27001 & SOC 2 compliance consulting, SIEM deployment, DevSecOps pipelines, Zero Trust architecture, cloud security (AWS, Azure, GCP), and API security.",
+    "SECFORIT cybersecurity services by Lisman Razvan: security assessments, vulnerability assessment, ISO 27001 & SOC 2 compliance consulting, SIEM deployment, DevSecOps pipelines, Zero Trust architecture, cloud security (AWS, Azure, GCP), and API security.",
   keywords: [
-    'penetration testing services',
+    'security assessments services',
     'vulnerability assessment',
     'ISO 27001 consulting',
     'SOC 2 compliance',
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Cybersecurity Services | SECFORIT by Lisman Razvan',
-    description: 'Professional cybersecurity services: penetration testing, ISO 27001 compliance, SIEM solutions, DevSecOps, and Zero Trust architecture by Lisman Razvan.',
+    description: 'Professional cybersecurity services: security assessments, ISO 27001 compliance, SIEM solutions, DevSecOps, and Zero Trust architecture by Lisman Razvan.',
     url: 'https://www.secforit.ro/services',
   },
 }

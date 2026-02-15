@@ -248,7 +248,7 @@ export function AboutSection() {
             </h2>
 
             <p className="text-muted-foreground text-lg leading-relaxed mb-8">
-              Founded by <strong>Lisman Razvan</strong>, SECFORIT is a cybersecurity consulting
+              SECFORIT is a cybersecurity consulting
               firm built on the principle that security should be foundational, not an
               afterthought. Our approach combines industry-leading frameworks like
               ISO 27001, NIST, and SOC 2 with modern Zero Trust architecture to create
@@ -256,10 +256,10 @@ export function AboutSection() {
             </p>
 
             <p className="text-muted-foreground leading-relaxed mb-10">
-              With expertise in penetration testing, SIEM deployment, DevSecOps,
+              With expertise in security assessments, SIEM deployment, DevSecOps,
               and cloud security, we work alongside your team to implement security
               measures that scale with your business. From compliance consulting
-              to secure development, Lisman Razvan and the SECFORIT team deliver
+              to secure development, the SECFORIT team delivers
               cybersecurity solutions that defend what matters most.
             </p>
 

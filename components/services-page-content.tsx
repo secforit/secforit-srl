@@ -34,7 +34,7 @@ const services = [
     description:
       "Continuous vulnerability scanning, threat modeling, and cloud security posture assessments to identify risks before they become breaches.",
     details: [
-      "Penetration testing and red team exercises",
+      "Security assessments and red team exercises",
       "Continuous vulnerability scanning and management",
       "Cloud security posture assessment (AWS, Azure, GCP)",
       "Threat modeling and attack surface mapping",
@@ -209,7 +209,7 @@ export function ServicesPageContent() {
             Our <span className="text-primary">Cybersecurity Services</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Comprehensive cybersecurity solutions by Lisman Razvan — penetration testing,
+            Comprehensive cybersecurity solutions by Lisman Razvan — security assessments,
             ISO 27001 compliance, SIEM deployment, and Zero Trust architecture
             tailored to protect your organization at every level.
           </p>

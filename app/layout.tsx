@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: 'SECFORIT | Cybersecurity Consulting & Security Solutions by Lisman Razvan',
     template: '%s | SECFORIT - Cybersecurity by Lisman Razvan',
   },
-  description: 'SECFORIT, founded by Lisman Razvan, delivers expert cybersecurity consulting, penetration testing, ISO 27001 compliance, SIEM solutions, Zero Trust architecture, and secure development. Trusted cybersecurity partner for businesses across Europe.',
+  description: 'SECFORIT, founded by Lisman Razvan, delivers expert cybersecurity consulting, security assessments, ISO 27001 compliance, SIEM solutions, Zero Trust architecture, and secure development. Trusted cybersecurity partner for businesses across Europe.',
   keywords: [
     'cybersecurity consulting',
     'Lisman Razvan',
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     'Lisman Razvan SECFORIT',
     'SECFORIT',
     'security consulting',
-    'penetration testing',
+    'security assessments',
     'ISO 27001 compliance',
     'SOC 2 compliance',
     'NIST compliance',
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName: 'SECFORIT',
     title: 'SECFORIT | Cybersecurity Consulting & Security Solutions by Lisman Razvan',
-    description: 'Expert cybersecurity consulting by Lisman Razvan. Penetration testing, ISO 27001, SOC 2, SIEM, Zero Trust architecture, and secure development for businesses.',
+    description: 'Expert cybersecurity consulting by Lisman Razvan. Security assessments, ISO 27001, SOC 2, SIEM, Zero Trust architecture, and secure development for businesses.',
     images: [
       {
         url: '/Logo-SECFORIT.png',
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'SECFORIT | Cybersecurity Consulting by Lisman Razvan',
-    description: 'Expert cybersecurity consulting: penetration testing, ISO 27001, SIEM, Zero Trust, DevSecOps. Founded by Lisman Razvan.',
+    description: 'Expert cybersecurity consulting: security assessments, ISO 27001, SIEM, Zero Trust, DevSecOps. Founded by Lisman Razvan.',
     images: ['/Logo-SECFORIT.png'],
   },
   alternates: {

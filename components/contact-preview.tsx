@@ -45,9 +45,9 @@ export function ContactPreview() {
             {"Let's"} <span className="text-primary">Secure</span> Your Future
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto mb-10">
-            Ready to strengthen your security posture? Contact Lisman Razvan
-            and the SECFORIT team for expert cybersecurity consulting,
-            penetration testing, and compliance advisory.
+            Ready to strengthen your security posture? Contact
+            the SECFORIT team for expert cybersecurity consulting,
+            security assessments, and compliance advisory.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

@@ -80,7 +80,7 @@ export function ServicesPreview() {
           </h2>
           <div className="relative inline-block">
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Professional security consulting, penetration testing, and compliance solutions by Lisman Razvan
+              Professional security consulting, security assessments, and compliance solutions
             </p>
             <div
               className={`absolute -bottom-2 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-1000 ${

@@ -91,7 +91,8 @@ export function HeroSection() {
 
           {/* Subheadline */}
           <p className="text-lg md:text-xl text-muted-foreground mb-4 max-w-2xl mx-auto animate-fade-in-up animation-delay-200">
-            Zero Trust architecture and expert consulting to defend what matters most
+            Expert cybersecurity consulting by Lisman Razvan — Zero Trust architecture,
+            penetration testing, and compliance solutions to defend what matters most
           </p>
 
           {/* Typewriter */}

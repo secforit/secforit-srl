@@ -76,11 +76,11 @@ export function ServicesPreview() {
           }`}
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
-            Our <span className="text-primary">Services</span>
+            Our <span className="text-primary">Cybersecurity Services</span>
           </h2>
           <div className="relative inline-block">
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Comprehensive cybersecurity solutions tailored to protect your digital assets
+              Professional security consulting, penetration testing, and compliance solutions by Lisman Razvan
             </p>
             <div
               className={`absolute -bottom-2 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent transition-all duration-1000 ${

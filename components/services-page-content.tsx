@@ -206,10 +206,11 @@ export function ServicesPageContent() {
             </span>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-foreground">
-            Our <span className="text-primary">Services</span>
+            Our <span className="text-primary">Cybersecurity Services</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Comprehensive cybersecurity solutions built on Zero Trust principles,
+            Comprehensive cybersecurity solutions by Lisman Razvan — penetration testing,
+            ISO 27001 compliance, SIEM deployment, and Zero Trust architecture
             tailored to protect your organization at every level.
           </p>
           <div

@@ -4,9 +4,12 @@ import { PrivacyPolicyContent } from "@/components/privacy-policy-content"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | SECFORIT",
+  title: "Privacy Policy",
   description:
-    "SECFORIT privacy policy. Learn how we collect, use, and protect your personal data in compliance with GDPR and European data protection regulations.",
+    "SECFORIT privacy policy by Lisman Razvan. Learn how we collect, use, and protect your personal data in compliance with GDPR and European data protection regulations.",
+  alternates: {
+    canonical: 'https://www.secforit.ro/privacy-policy',
+  },
 }
 
 export default function PrivacyPolicyPage() {

@@ -52,7 +52,7 @@ export function Navigation() {
               alt="SECFORIT - Security first"
               width={180}
               height={50}
-              className="h-10 md:h-12 w-auto transition-transform duration-300 group-hover:scale-105"
+              className="h-10 md:h-12 w-auto transition-all duration-300 group-hover:scale-105"
               priority
             />
           </Link>

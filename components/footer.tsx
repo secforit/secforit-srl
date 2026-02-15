@@ -39,8 +39,9 @@ export function Footer() {
               />
             </Link>
             <p className="text-muted-foreground max-w-sm mb-6">
-              Defending digital assets with Zero Trust architecture and
-              security-first principles. Your trusted cybersecurity partner.
+              SECFORIT, founded by Lisman Razvan, delivers cybersecurity consulting,
+              penetration testing, ISO 27001 compliance, and Zero Trust architecture.
+              Your trusted cybersecurity partner across Europe.
             </p>
             {/* Social Links */}
             <div className="flex items-center gap-3">

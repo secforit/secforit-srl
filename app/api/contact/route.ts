@@ -5,8 +5,8 @@ import nodemailer from "nodemailer"
 // In-memory rate limiter (per IP, resets on server restart)
 // ---------------------------------------------------------------------------
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000 // 15 minutes
-const RATE_LIMIT_MAX = 5 // max submissions per window
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000 // 1 hour
+const RATE_LIMIT_MAX = 3 // max submissions per window
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now()
@@ -88,6 +88,32 @@ function validateBody(
 }
 
 // ---------------------------------------------------------------------------
+// reCAPTCHA v3 verification
+// ---------------------------------------------------------------------------
+async function verifyRecaptcha(token: string): Promise<boolean> {
+  const secret = process.env.RECAPTCHA_SECRET_KEY
+  if (!secret) {
+    console.warn("RECAPTCHA_SECRET_KEY not set — skipping verification")
+    return true // allow through if not configured yet
+  }
+
+  try {
+    const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret, response: token }),
+    })
+
+    const data = await res.json()
+    // Require score >= 0.5 and correct action
+    return data.success && data.score >= 0.5 && data.action === "contact_form"
+  } catch {
+    console.error("reCAPTCHA verification failed")
+    return false
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Honeypot field name — bots will fill this, real users won't see it
 // ---------------------------------------------------------------------------
 const HONEYPOT_FIELD = "_hp_website"
@@ -127,6 +153,23 @@ export async function POST(req: NextRequest) {
     ) {
       // Silently succeed so the bot thinks it worked
       return NextResponse.json({ success: true })
+    }
+
+    // --- reCAPTCHA verification ---
+    const recaptchaToken =
+      body && typeof body === "object"
+        ? (body as Record<string, unknown>).recaptchaToken
+        : undefined
+
+    if (typeof recaptchaToken === "string" && recaptchaToken.length > 0) {
+      const isHuman = await verifyRecaptcha(recaptchaToken)
+      if (!isHuman) {
+        // Silently succeed so bots think it worked
+        return NextResponse.json({ success: true })
+      }
+    } else if (process.env.RECAPTCHA_SECRET_KEY) {
+      // If reCAPTCHA is configured but no token was sent, reject
+      return NextResponse.json({ success: true }) // silent fake success
     }
 
     // --- Validate ---

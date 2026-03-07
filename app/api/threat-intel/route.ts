@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 // ─── Authorization ────────────────────────────────────────────────────────────
 

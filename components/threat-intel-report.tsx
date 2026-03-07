@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { ThreatIntelReport } from '@/app/api/threat-intel/route'
 import {
   Shield, AlertTriangle, Cpu, Target, Activity,
-  BookOpen, Wrench, Eye, Link2, ChevronRight, FileDown, Loader2,
+  BookOpen, Wrench, Eye, Link2, ChevronRight, Mail, Loader2, CheckCircle2,
 } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -105,28 +105,28 @@ function CodeBlock({ platform, query, description }: { platform: string; query: 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
-  const [downloading, setDownloading] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
 
-  async function handleDownload() {
-    setDownloading(true)
+  async function handleSendEmail() {
+    setSending(true)
+    setSent(false)
     try {
-      const res = await fetch('/api/threat-intel/export', {
+      const res = await fetch('/api/threat-intel/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ report }),
       })
-      if (!res.ok) throw new Error('Export failed')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${report.vulnerability.cve_id ?? 'threat-intel'}-${new Date().toISOString().slice(0, 10)}.docx`
-      a.click()
-      URL.revokeObjectURL(url)
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}))
+        throw new Error(e.error ?? 'Send failed')
+      }
+      setSent(true)
+      setTimeout(() => setSent(false), 4000)
     } catch (err) {
       console.error(err)
     } finally {
-      setDownloading(false)
+      setSending(false)
     }
   }
 
@@ -148,12 +148,12 @@ export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
           </span>
         )}
         <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-foreground hover:bg-secondary disabled:opacity-50 transition-colors"
+          onClick={handleSendEmail}
+          disabled={sending || sent}
+          className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${sent ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30' : 'border-border text-foreground hover:bg-secondary'} disabled:opacity-60`}
         >
-          {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
-          {downloading ? 'Generating…' : 'Download Word'}
+          {sending ? <Loader2 className="size-3.5 animate-spin" /> : sent ? <CheckCircle2 className="size-3.5" /> : <Mail className="size-3.5" />}
+          {sending ? 'Sending…' : sent ? 'Sent!' : 'Send via Email'}
         </button>
       </div>
 

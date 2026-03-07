@@ -5,13 +5,22 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/app/auth/actions'
-import { ArrowLeft, LogOut, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, LogOut, ShieldAlert, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import type { VulnApiResponse } from '@/app/api/vulnerabilities/route'
 
 export const metadata: Metadata = {
   title: 'Vulnerability Feed | SECFORIT Portal',
   robots: { index: false, follow: false },
+}
+
+function checkAnalyst(email?: string | null): boolean {
+  if (!email) return false
+  const allowlist = (process.env.THREAT_INTEL_ALLOWED_EMAILS ?? '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+  return allowlist.includes(email.toLowerCase())
 }
 
 async function getVulnerabilities(): Promise<VulnApiResponse> {
@@ -27,6 +36,8 @@ export default async function VulnerabilitiesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const isAnalyst = checkAnalyst(user.email)
 
   let data: VulnApiResponse | null = null
   let error: string | null = null
@@ -46,6 +57,15 @@ export default async function VulnerabilitiesPage() {
             <Image src="/Logo-SECFORIT.png" alt="SECFORIT" width={160} height={44} className="h-9 w-auto" />
           </Link>
           <div className="flex items-center gap-3">
+            {isAnalyst && (
+              <Link
+                href="/portal/threat-intel"
+                className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-primary/40 text-primary bg-primary/5 hover:bg-primary hover:text-primary-foreground transition-all"
+              >
+                <Zap className="size-3.5" />
+                PDF Threat Intel
+              </Link>
+            )}
             <span className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground bg-green-500/10 border border-green-500/20 rounded-full px-3 py-1">
               <span className="size-1.5 rounded-full bg-green-500 animate-pulse" />
               Session active
@@ -94,6 +114,7 @@ export default async function VulnerabilitiesPage() {
             vulnerabilities={data.vulnerabilities}
             total={data.total}
             lastUpdated={data.lastUpdated}
+            isAnalyst={isAnalyst}
           />
         ) : null}
       </main>

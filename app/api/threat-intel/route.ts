@@ -395,61 +395,78 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+  let formData: FormData
   try {
-    const formData = await request.formData()
-    const pdf = formData.get('pdf') as File | null
-    const cveDataRaw = formData.get('cve_data') as string | null
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let userContent: any[]
-
-    if (pdf) {
-      const buffer = await pdf.arrayBuffer()
-      const base64 = Buffer.from(buffer).toString('base64')
-      userContent = [
-        {
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: base64 },
-          title: pdf.name,
-        },
-        {
-          type: 'text',
-          text: 'Analyze this document and produce a complete threat intelligence report.',
-        },
-      ]
-    } else if (cveDataRaw) {
-      const cveData = JSON.parse(cveDataRaw)
-      const doc = buildCveDocument(cveData)
-      userContent = [
-        {
-          type: 'text',
-          text: `${doc}\n\nProduce a complete threat intelligence report for this CVE. The vulnerability is confirmed exploited in the wild (CISA KEV). Be specific about exploitation methods, threat actors, and detection.`,
-        },
-      ]
-    } else {
-      return NextResponse.json({ error: 'Provide either a PDF file or cve_data JSON' }, { status: 400 })
-    }
-
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      tools: [TOOL_SCHEMA],
-      tool_choice: { type: 'tool', name: 'create_threat_intel_report' },
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userContent }],
-    })
-
-    const toolBlock = response.content.find(b => b.type === 'tool_use')
-    if (!toolBlock || toolBlock.type !== 'tool_use') {
-      throw new Error('No structured output returned')
-    }
-
-    // Validate with Zod
-    const report = ThreatIntelSchema.parse(toolBlock.input)
-    return NextResponse.json({ report })
-  } catch (err) {
-    console.error('Threat intel error:', err)
-    const msg = err instanceof Error ? err.message : 'Internal error'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    formData = await request.formData()
+  } catch {
+    return NextResponse.json({ error: 'Invalid form data' }, { status: 400 })
   }
+
+  const pdf = formData.get('pdf') as File | null
+  const cveDataRaw = formData.get('cve_data') as string | null
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let userContent: any[]
+
+  if (pdf) {
+    const buffer = await pdf.arrayBuffer()
+    const base64 = Buffer.from(buffer).toString('base64')
+    userContent = [
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 }, title: pdf.name },
+      { type: 'text', text: 'Analyze this document and produce a complete threat intelligence report.' },
+    ]
+  } else if (cveDataRaw) {
+    const cveData = JSON.parse(cveDataRaw)
+    userContent = [
+      { type: 'text', text: `${buildCveDocument(cveData)}\n\nProduce a complete threat intelligence report for this CVE. The vulnerability is confirmed exploited in the wild (CISA KEV). Be specific about exploitation methods, threat actors, and detection.` },
+    ]
+  } else {
+    return NextResponse.json({ error: 'Provide either a PDF file or cve_data JSON' }, { status: 400 })
+  }
+
+  // SSE streaming response — keeps connection alive during long Anthropic calls
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: string) => {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`))
+      }
+
+      // Ping every 8 seconds to prevent gateway timeout
+      const ping = setInterval(() => send('ping', '{}'), 8000)
+
+      try {
+        send('status', JSON.stringify({ message: 'Analyzing with Claude…' }))
+
+        const response = await client.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          tools: [TOOL_SCHEMA],
+          tool_choice: { type: 'tool', name: 'create_threat_intel_report' },
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: userContent }],
+        })
+
+        const toolBlock = response.content.find(b => b.type === 'tool_use')
+        if (!toolBlock || toolBlock.type !== 'tool_use') throw new Error('No structured output returned')
+
+        const report = ThreatIntelSchema.parse(toolBlock.input)
+        send('result', JSON.stringify({ report }))
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Internal error'
+        send('error', JSON.stringify({ error: msg }))
+      } finally {
+        clearInterval(ping)
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  })
 }

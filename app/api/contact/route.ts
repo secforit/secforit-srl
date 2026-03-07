@@ -217,44 +217,174 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // --- Build email ---
-    const companyLine = company ? `\nCompany: ${company}` : ""
+    // --- Build internal notification email ---
+    const notificationHtml = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-    const htmlBody = `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #dc2626; padding: 20px 24px; border-radius: 8px 8px 0 0;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 20px;">New Contact Form Submission</h1>
-        </div>
-        <div style="background: #ffffff; padding: 24px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 8px 8px;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px 0; color: #525252; font-weight: 600; width: 100px;">Name:</td>
-              <td style="padding: 8px 0; color: #0a0a0a;">${name}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #525252; font-weight: 600;">Email:</td>
-              <td style="padding: 8px 0; color: #0a0a0a;"><a href="mailto:${email}" style="color: #dc2626;">${email}</a></td>
-            </tr>
-            ${company ? `<tr><td style="padding: 8px 0; color: #525252; font-weight: 600;">Company:</td><td style="padding: 8px 0; color: #0a0a0a;">${company}</td></tr>` : ""}
-          </table>
-          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 16px 0;" />
-          <div style="color: #525252; font-weight: 600; margin-bottom: 8px;">Message:</div>
-          <div style="color: #0a0a0a; white-space: pre-wrap; line-height: 1.6;">${message}</div>
-        </div>
-        <div style="text-align: center; padding: 16px; color: #a3a3a3; font-size: 12px;">
-          Sent from secforit.ro contact form
-        </div>
-      </div>
-    `
+        <!-- Header -->
+        <tr>
+          <td style="background:#0a0a0a;padding:28px 32px;border-radius:8px 8px 0 0;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <span style="color:#dc2626;font-size:22px;font-weight:700;letter-spacing:1px;">SECFORIT</span>
+                  <span style="color:#737373;font-size:13px;margin-left:10px;">Security Operations</span>
+                </td>
+                <td align="right">
+                  <span style="background:#dc2626;color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:4px;letter-spacing:0.5px;">NEW INQUIRY</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-    // --- Send email ---
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;padding:32px;border-left:1px solid #e4e4e7;border-right:1px solid #e4e4e7;">
+            <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.5;">
+              A new contact form submission has been received. Details below:
+            </p>
+
+            <!-- Contact details -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border:1px solid #e4e4e7;border-radius:6px;margin-bottom:24px;">
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e4e4e7;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Full Name</span><br>
+                  <span style="color:#0a0a0a;font-size:15px;font-weight:500;margin-top:4px;display:block;">${name}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e4e4e7;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Email Address</span><br>
+                  <a href="mailto:${email}" style="color:#dc2626;font-size:15px;font-weight:500;margin-top:4px;display:block;text-decoration:none;">${email}</a>
+                </td>
+              </tr>
+              ${company ? `<tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e4e4e7;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Company</span><br>
+                  <span style="color:#0a0a0a;font-size:15px;font-weight:500;margin-top:4px;display:block;">${company}</span>
+                </td>
+              </tr>` : ""}
+              <tr>
+                <td style="padding:14px 20px;">
+                  <span style="color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Message</span><br>
+                  <p style="color:#0a0a0a;font-size:15px;line-height:1.7;margin:8px 0 0;white-space:pre-wrap;">${message}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Reply CTA -->
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background:#dc2626;border-radius:6px;">
+                  <a href="mailto:${email}?subject=Re: Your inquiry to SECFORIT" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">
+                    Reply to ${name} →
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f4f4f5;padding:20px 32px;border-radius:0 0 8px 8px;border:1px solid #e4e4e7;border-top:none;">
+            <p style="margin:0;color:#a1a1aa;font-size:12px;line-height:1.6;">
+              This message was submitted via the contact form at <a href="https://www.secforit.ro" style="color:#dc2626;text-decoration:none;">secforit.ro</a>.
+              Do not reply directly to this email — use the button above to reach the sender.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    // --- Build confirmation email (to sender) ---
+    const confirmationHtml = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#0a0a0a;padding:28px 32px;border-radius:8px 8px 0 0;">
+            <span style="color:#dc2626;font-size:22px;font-weight:700;letter-spacing:1px;">SECFORIT</span>
+            <span style="color:#737373;font-size:13px;margin-left:10px;">Security Operations</span>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;padding:40px 32px;border-left:1px solid #e4e4e7;border-right:1px solid #e4e4e7;">
+            <h1 style="margin:0 0 8px;color:#0a0a0a;font-size:22px;font-weight:700;">Thank you, ${name}.</h1>
+            <p style="margin:0 0 28px;color:#71717a;font-size:15px;">We have received your message and will get back to you within <strong style="color:#0a0a0a;">24 hours</strong> on business days.</p>
+
+            <!-- Divider -->
+            <div style="border-top:2px solid #dc2626;margin-bottom:28px;width:48px;"></div>
+
+            <!-- Message recap -->
+            <p style="margin:0 0 12px;color:#71717a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Your message</p>
+            <div style="background:#fafafa;border:1px solid #e4e4e7;border-left:3px solid #dc2626;border-radius:0 6px 6px 0;padding:16px 20px;margin-bottom:32px;">
+              <p style="margin:0;color:#3f3f46;font-size:14px;line-height:1.7;white-space:pre-wrap;">${message}</p>
+            </div>
+
+            <!-- Contact info -->
+            <p style="margin:0 0 16px;color:#3f3f46;font-size:14px;line-height:1.6;">
+              In the meantime, feel free to reach us directly at
+              <a href="mailto:razvan@secforit.ro" style="color:#dc2626;text-decoration:none;font-weight:600;">razvan@secforit.ro</a>
+              or visit us at
+              <a href="https://www.secforit.ro" style="color:#dc2626;text-decoration:none;font-weight:600;">secforit.ro</a>.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f4f4f5;padding:20px 32px;border-radius:0 0 8px 8px;border:1px solid #e4e4e7;border-top:none;">
+            <p style="margin:0;color:#a1a1aa;font-size:12px;line-height:1.6;">
+              © ${new Date().getFullYear()} SECFORIT · Romania, EU ·
+              <a href="https://www.secforit.ro/privacy-policy" style="color:#a1a1aa;">Privacy Policy</a>
+            </p>
+            <p style="margin:6px 0 0;color:#a1a1aa;font-size:11px;">
+              You are receiving this email because you submitted a contact form at secforit.ro.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    // --- Send notification to team ---
     await transporter.sendMail({
-      from: `"SECFORIT Contact" <${SMTP_FROM}>`,
+      from: `"SECFORIT" <${SMTP_FROM}>`,
       to: CONTACT_TO,
       replyTo: email,
-      subject: `Contact Form: ${name}${companyLine}`,
-      text: `Name: ${name}\nEmail: ${email}${companyLine}\n\nMessage:\n${message}`,
-      html: htmlBody,
+      subject: `New inquiry from ${name}${company ? " · " + company : ""}`,
+      text: `Name: ${name}\nEmail: ${email}${company ? "\nCompany: " + company : ""}\n\nMessage:\n${message}`,
+      html: notificationHtml,
+    })
+
+    // --- Send confirmation to sender ---
+    await transporter.sendMail({
+      from: `"SECFORIT" <${SMTP_FROM}>`,
+      to: email,
+      subject: `We received your message, ${name.split(" ")[0]}`,
+      text: `Hi ${name},\n\nThank you for reaching out. We have received your message and will get back to you within 24 hours on business days.\n\nYour message:\n${message}\n\n— SECFORIT Team\nhttps://www.secforit.ro`,
+      html: confirmationHtml,
     })
 
     return NextResponse.json({ success: true })

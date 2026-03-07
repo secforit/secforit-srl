@@ -10,7 +10,7 @@ import type { Metadata } from 'next'
 import type { VulnApiResponse } from '@/app/api/vulnerabilities/route'
 
 export const metadata: Metadata = {
-  title: 'Vulnerability Feed | SECFORIT Portal',
+  title: 'Globally Exploited Vulnerabilities | SECFORIT Portal',
   robots: { index: false, follow: false },
 }
 
@@ -93,7 +93,7 @@ export default async function VulnerabilitiesPage() {
             <ShieldAlert className="size-3.5 text-primary" />
             <span className="text-xs text-muted-foreground">Live threat intelligence</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Exploited Vulnerabilities</h1>
+          <h1 className="text-2xl font-bold text-foreground">Globally Exploited Vulnerabilities</h1>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
             Real-time feed of vulnerabilities confirmed exploited in the wild, sourced from{' '}
             <a href="https://nvd.nist.gov" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">NVD</a>

@@ -87,7 +87,7 @@ export function Navigation() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                className="gap-1.5 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300"
                 onClick={() => setAuthOpen(true)}
               >
                 <LogIn className="size-4" />
@@ -138,7 +138,7 @@ export function Navigation() {
               ))}
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-2 text-muted-foreground mt-1"
+                className="w-full justify-start gap-2 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-300 mt-1"
                 onClick={() => { setIsMobileMenuOpen(false); setAuthOpen(true) }}
               >
                 <LogIn className="size-4" />

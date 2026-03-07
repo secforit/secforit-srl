@@ -211,7 +211,7 @@ export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {Object.entries(report.vulnerability.cvss_breakdown)
                   .filter(([, v]) => v)
-                  .map(([key, value]) => (
+                  .map(([key, value], idx) => (
                     <div key={key} className="bg-background border border-border rounded-lg px-3 py-2">
                       <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</p>
                       <p className="text-xs font-semibold text-foreground capitalize">{String(value).toLowerCase().replace(/_/g, ' ')}</p>
@@ -325,7 +325,7 @@ export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
         <TabsContent value="mitre" className="mt-4 space-y-4">
           <Card title="Tactics">
             <div className="flex flex-wrap gap-2">
-              {report.mitre_attack.tactics.map(t => (
+              {report.mitre_attack.tactics.map((t, i) => (
                 <a
                   key={t.id}
                   href={`https://attack.mitre.org/tactics/${t.id}/`}
@@ -342,7 +342,7 @@ export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
 
           <Card title="Techniques">
             <div className="space-y-2">
-              {report.mitre_attack.techniques.map(t => (
+              {report.mitre_attack.techniques.map((t, i) => (
                 <a
                   key={t.id}
                   href={`https://attack.mitre.org/techniques/${t.id.replace('.', '/')}/`}
@@ -490,7 +490,7 @@ export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
           <TabsContent value="references" className="mt-4">
             <Card title="References">
               <div className="space-y-2">
-                {report.references.map((ref, i) => (
+                {report.references.map((ref, idx) => (
                   <a
                     key={i}
                     href={ref.url}

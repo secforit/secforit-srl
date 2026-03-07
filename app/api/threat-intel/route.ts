@@ -9,11 +9,10 @@ export const maxDuration = 120
 
 function isAuthorized(email?: string | null): boolean {
   if (!email) return false
-  const allowlist = (process.env.THREAT_INTEL_ALLOWED_EMAILS ?? '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean)
-  return allowlist.includes(email.toLowerCase())
+  const raw = process.env.THREAT_INTEL_ALLOWED_EMAILS ?? ''
+  // If env var not configured, all authenticated users have access
+  if (!raw.trim()) return true
+  return raw.split(',').map(e => e.trim().toLowerCase()).includes(email.toLowerCase())
 }
 
 // ─── Zod schema (for typing only) ────────────────────────────────────────────

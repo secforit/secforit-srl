@@ -86,6 +86,13 @@ export function Navigation() {
 
             {/* CTA Buttons */}
             <div className="hidden md:flex items-center gap-2">
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              </button>
               <Button
                 variant="ghost"
                 size="sm"

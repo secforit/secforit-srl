@@ -17,7 +17,7 @@ import {
   Clock,
   Linkedin,
 } from "lucide-react"
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3"
+import { useEnterpriseReCaptcha } from "@/components/recaptcha-provider"
 
 // Phone number split into parts to prevent bot/spider scraping from static HTML.
 // Assembled only at runtime via JavaScript — never appears as a single string in source.
@@ -30,7 +30,7 @@ function getPhoneDisplay() {
 }
 
 export function ContactPageContent() {
-  const { executeRecaptcha } = useGoogleReCaptcha()
+  const { executeRecaptcha } = useEnterpriseReCaptcha()
   const [isVisible, setIsVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)

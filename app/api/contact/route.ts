@@ -88,27 +88,37 @@ function validateBody(
 }
 
 // ---------------------------------------------------------------------------
-// reCAPTCHA v3 verification
+// reCAPTCHA Enterprise verification
 // ---------------------------------------------------------------------------
 async function verifyRecaptcha(token: string): Promise<boolean> {
-  const secret = process.env.RECAPTCHA_SECRET_KEY
-  if (!secret) {
-    console.warn("RECAPTCHA_SECRET_KEY not set — skipping verification")
-    return true // allow through if not configured yet
+  const projectId = process.env.RECAPTCHA_PROJECT_ID
+  const apiKey = process.env.GOOGLE_API_KEY
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+
+  if (!projectId || !apiKey) {
+    console.warn('reCAPTCHA Enterprise not configured — skipping verification')
+    return true
   }
 
   try {
-    const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ secret, response: token }),
-    })
+    const res = await fetch(
+      `https://recaptchaenterprise.googleapis.com/v1/projects/${projectId}/assessments?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: { token, siteKey, expectedAction: 'contact_form' },
+        }),
+      }
+    )
 
     const data = await res.json()
-    // Require score >= 0.5 and correct action
-    return data.success && data.score >= 0.5 && data.action === "contact_form"
+
+    if (!data.tokenProperties?.valid) return false
+    if (data.tokenProperties.action !== 'contact_form') return false
+    return (data.riskAnalysis?.score ?? 0) >= 0.5
   } catch {
-    console.error("reCAPTCHA verification failed")
+    console.error('reCAPTCHA Enterprise verification failed')
     return false
   }
 }

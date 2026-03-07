@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, X, LogIn } from "lucide-react"
+import { useTheme } from "next-themes"
+import { Menu, X, LogIn, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AuthPanel } from "@/components/auth-panel"
 import Image from "next/image"
@@ -19,6 +20,7 @@ export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const pathname = usePathname()
+  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     const handleScroll = () => {

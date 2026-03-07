@@ -4,6 +4,7 @@ import { Space_Grotesk, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { CookieConsent } from '@/components/cookie-consent'
 import { RecaptchaProvider } from '@/components/recaptcha-provider'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-sans" });
@@ -108,11 +109,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${spaceGrotesk.variable} ${jetBrainsMono.variable} font-sans antialiased`}>
-        <RecaptchaProvider>
-          {children}
-        </RecaptchaProvider>
+        <ThemeProvider>
+          <RecaptchaProvider>
+            {children}
+          </RecaptchaProvider>
+        </ThemeProvider>
         <CookieConsent />
         <Analytics />
       </body>

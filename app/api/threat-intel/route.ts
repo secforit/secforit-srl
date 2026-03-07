@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 
-export const maxDuration = 120
+export const maxDuration = 60
 
 // ─── Authorization ────────────────────────────────────────────────────────────
 
@@ -431,8 +431,8 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await client.messages.create({
-      model: 'claude-opus-4-6',
-      max_tokens: 8000,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
       tools: [TOOL_SCHEMA],
       tool_choice: { type: 'tool', name: 'create_threat_intel_report' },
       system: SYSTEM_PROMPT,

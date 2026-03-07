@@ -433,7 +433,6 @@ export async function POST(request: NextRequest) {
     const response = await client.messages.create({
       model: 'claude-opus-4-6',
       max_tokens: 8000,
-      thinking: { type: 'adaptive' },
       tools: [TOOL_SCHEMA],
       tool_choice: { type: 'tool', name: 'create_threat_intel_report' },
       system: SYSTEM_PROMPT,

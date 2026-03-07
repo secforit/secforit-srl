@@ -1,10 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { ThreatIntelReport } from '@/app/api/threat-intel/route'
 import {
   Shield, AlertTriangle, Cpu, Target, Activity,
-  BookOpen, Wrench, Eye, Link2, ChevronRight,
+  BookOpen, Wrench, Eye, Link2, ChevronRight, FileDown, Loader2,
 } from 'lucide-react'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -104,6 +105,31 @@ function CodeBlock({ platform, query, description }: { platform: string; query: 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    setDownloading(true)
+    try {
+      const res = await fetch('/api/threat-intel/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report }),
+      })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${report.vulnerability.cve_id ?? 'threat-intel'}-${new Date().toISOString().slice(0, 10)}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -121,6 +147,14 @@ export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
             Ransomware Linked
           </span>
         )}
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border text-foreground hover:bg-secondary disabled:opacity-50 transition-colors"
+        >
+          {downloading ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+          {downloading ? 'Generating…' : 'Download Word'}
+        </button>
       </div>
 
       {/* Executive summary */}

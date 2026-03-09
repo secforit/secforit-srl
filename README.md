@@ -2,180 +2,204 @@
 
 **Security by Design. Protection by Default.**
 
-A professional cybersecurity consulting company website built with modern web technologies. SECFORIT delivers Zero Trust architecture and expert consulting to defend what matters most.
+Professional cybersecurity consulting platform for SECFORIT — featuring a public marketing site, a secure client portal, a live vulnerability intelligence feed, and an AI-powered threat intelligence report engine that delivers structured CTI reports via email.
+
+---
+
+## Features
+
+### Public Site
+- Marketing pages: Home, Services, Privacy Policy, Cookie Policy
+- Contact form with reCAPTCHA Enterprise, honeypot, and rate limiting
+- Responsive navigation with dark/light theme support
+
+### Authentication
+- Email + password registration (Zod-validated, strength-enforced)
+- **Invite-code gating** — registration requires a valid invite code (`INVITE_CODES` env var)
+- Supabase Auth with email confirmation and session management
+- Passkey (WebAuthn) support via `PasskeyManager`
+
+### Secure Portal (`/portal`)
+- Session-protected dashboard with account details
+- **Vulnerability Feed** — live feed aggregating NVD CVE data + CISA Known Exploited Vulnerabilities (KEV) catalog, cached hourly
+- **Threat Intelligence** — AI-generated CTI reports delivered via branded HTML email
+
+### Threat Intelligence Engine
+- Triggers from any CVE in the vulnerability feed with one click
+- Uses **OpenAI GPT-4o** with structured outputs (Zod schema enforcement)
+- Generates analyst-quality reports covering:
+  - Executive summary · CVSS v3.1 breakdown
+  - Exploitation status · CISA KEV entry
+  - MITRE ATT&CK tactics & techniques
+  - Technical root cause & exploitation mechanics
+  - IOCs (hashes, IPs, domains, YARA rules)
+  - Detection queries (Splunk SPL / Microsoft Sentinel KQL)
+  - Prioritised remediation with patch versions
+  - Threat actor attribution · Senior analyst assessment
+- Report delivered as a **branded HTML email** (TLP-classified, SECFORIT logo)
+- Access restricted to an allowlist (`THREAT_INTEL_ALLOWED_EMAILS` env var)
 
 ---
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 |
-| UI Library | React 19 |
-| Styling | Tailwind CSS 4 |
-| Components | Radix UI + shadcn/ui (New York style) |
+|---|---|
+| Framework | Next.js 16 (App Router, TypeScript) |
+| UI | React 19, Tailwind CSS 4, Radix UI, shadcn/ui |
+| Auth | Supabase Auth + `@supabase/ssr` |
+| AI | OpenAI GPT-4o (`openai` SDK v6, structured outputs) |
+| Email | Nodemailer over SMTP/TLS |
+| Validation | Zod |
+| Forms | React Hook Form |
 | Icons | Lucide React |
-| Forms | React Hook Form + Zod validation |
-| Charts | Recharts |
-| Fonts | Space Grotesk (sans), JetBrains Mono (mono) |
 | Analytics | Vercel Analytics |
+| Deployment | Vercel |
+
+---
 
 ## Project Structure
 
 ```
 secforit-srl/
 ├── app/
-│   ├── globals.css            # Global styles, CSS variables, animations
-│   ├── layout.tsx             # Root layout with fonts & metadata
-│   ├── page.tsx               # Home page (single-page layout)
-│   └── favicon.ico
+│   ├── api/
+│   │   ├── contact/route.ts          # Contact form handler (SMTP, reCAPTCHA)
+│   │   ├── vulnerabilities/route.ts  # NVD + CISA KEV feed aggregation
+│   │   └── threat-intel/route.ts     # OpenAI CTI report generation + email
+│   ├── auth/
+│   │   ├── actions.ts                # Server actions: login, register, logout
+│   │   └── callback/route.ts         # Supabase auth callback
+│   ├── portal/
+│   │   ├── page.tsx                  # User dashboard
+│   │   ├── vulnerabilities/page.tsx  # Live vulnerability feed
+│   │   └── threat-intel/page.tsx     # Threat intel page
+│   ├── login/page.tsx
+│   ├── register/page.tsx             # Invite-code gated registration
+│   ├── services/page.tsx
+│   ├── privacy-policy/page.tsx
+│   ├── cookie-policy/page.tsx
+│   ├── layout.tsx
+│   ├── page.tsx                      # Home / marketing page
+│   ├── sitemap.ts
+│   └── robots.ts
 ├── components/
-│   ├── ui/                    # Primitive UI components (shadcn/ui)
-│   │   ├── button.tsx         # Button with 6 variants & 8 sizes
-│   │   ├── input.tsx          # Styled form input
-│   │   ├── label.tsx          # Accessible label (Radix UI)
-│   │   └── textarea.tsx       # Styled textarea
-│   ├── navigation.tsx         # Sticky nav with mobile menu
-│   ├── hero-section.tsx       # Hero with particle network & typewriter
-│   ├── services-section.tsx   # Service cards grid
-│   ├── about-section.tsx      # About with stats & circuit animation
-│   ├── contact-section.tsx    # Contact form & info
-│   ├── footer.tsx             # Footer with links & branding
-│   └── particle-network.tsx   # Canvas-based particle animation
+│   ├── ui/                           # shadcn/ui primitives
+│   ├── vulnerability-feed.tsx        # CVE feed with Generate CTI Report button
+│   ├── threat-intel-report.tsx       # Structured report renderer
+│   ├── navigation.tsx
+│   ├── passkey-manager.tsx
+│   └── ...
 ├── lib/
-│   └── utils.ts               # Utility functions (cn class merger)
-├── public/                    # Static assets
-├── components.json            # shadcn/ui configuration
-├── next.config.ts             # Next.js configuration
-├── tsconfig.json              # TypeScript configuration
-├── postcss.config.mjs         # PostCSS (Tailwind plugin)
-└── eslint.config.mjs          # ESLint configuration
+│   ├── supabase/                     # Supabase client (browser + server)
+│   └── utils.ts
+├── public/
+│   ├── Logo-SECFORIT.png
+│   └── logo-secforit.svg
+└── supabase/                         # Supabase config / migrations
 ```
 
-## Design System
+---
 
-### Color Palette
+## Environment Variables
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--primary` | `#dc2626` | Brand red, CTAs, accents |
-| `--primary-dark` | `#b91c1c` | Hover states |
-| `--background` | `#ffffff` | Page background |
-| `--foreground` | `#0a0a0a` | Primary text |
-| `--secondary` | `#f5f5f5` | Secondary backgrounds |
-| `--muted-foreground` | `#525252` | Subtle text |
-| `--border` | `#e5e5e5` | Borders & dividers |
-| `--accent` | `#0a0a0a` | Accent elements |
+Create a `.env.local` file:
 
-### Chart Colors
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-| Token | Value |
-|-------|-------|
-| `--chart-1` | `#dc2626` (Red) |
-| `--chart-2` | `#0a0a0a` (Black) |
-| `--chart-3` | `#525252` (Gray) |
-| `--chart-4` | `#a3a3a3` (Light Gray) |
-| `--chart-5` | `#ef4444` (Light Red) |
+# Site
+NEXT_PUBLIC_SITE_URL=https://www.secforit.ro
 
-### Typography
+# OpenAI (threat intel engine)
+OPENAI_API_KEY=
 
-- **Sans-serif:** Space Grotesk (headings & body)
-- **Monospace:** JetBrains Mono (code & technical text)
-- **Border radius:** `0.625rem` (10px)
+# Threat intel access control (comma-separated emails)
+THREAT_INTEL_ALLOWED_EMAILS=analyst@example.com,razvan@secforit.ro
 
-### Button Variants
+# Registration invite codes (comma-separated)
+INVITE_CODES=CODE-ONE,CODE-TWO
 
-| Variant | Description |
-|---------|-------------|
-| `default` | Primary red background |
-| `destructive` | Destructive action styling |
-| `outline` | Bordered, transparent background |
-| `secondary` | Secondary gray background |
-| `ghost` | No background, hover reveal |
-| `link` | Text-only with underline |
+# SMTP (email delivery)
+SMTP_HOST=
+SMTP_PORT=465
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=noreply@secforit.ro
+CONTACT_TO=razvan@secforit.ro
 
-## Page Sections
+# reCAPTCHA Enterprise (contact form)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=
+RECAPTCHA_PROJECT_ID=
+GOOGLE_API_KEY=
+```
 
-The site follows a single-page layout with smooth-scroll navigation:
-
-1. **Navigation** -- Sticky header with logo, section links (Services, About, Contact), CTA button, and responsive mobile menu with active section highlighting
-2. **Hero** -- Particle network canvas background, animated floating icons, typewriter effect cycling through key phrases, and scroll indicator
-3. **Services** -- 5 service cards in a responsive grid (3+2 layout) with staggered scroll-triggered animations:
-   - Security Consulting
-   - Threat & Vulnerability Analysis
-   - Automated Security Solutions
-   - Secure Web Development
-   - Secure Integration
-4. **About** -- Two-column layout with animated circuit pattern SVG, three differentiators, and animated stat counters (6+ years, 10+ clients, 20+ assessments)
-5. **Contact** -- 5-column grid with a validated form (name, email, company, message) and direct contact info with copy-to-clipboard
-6. **Footer** -- Company branding, social links (LinkedIn, Twitter, GitHub), quick links, and legal links
-
-## Animations
-
-| Animation | Implementation |
-|-----------|---------------|
-| Particle Network | Canvas-based particle system with connection lines |
-| Typewriter | Text cycling with typing/deleting effect |
-| Float | Subtle icon movement with rotation |
-| Fade-in / Fade-in-up | Scroll-triggered entry via Intersection Observer |
-| Counter | Animated number incrementing for stats |
-| Card Glow | Hover effect with radial gradient |
-| Circuit Pattern | SVG stroke-dashoffset animation with pulsing nodes |
-| Bounce | Scroll indicator arrow |
+---
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js 18+
-- npm, yarn, pnpm, or bun
-
-### Installation
-
 ```bash
+# Install dependencies
 npm install
-```
 
-### Development
-
-```bash
+# Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Production Build
+Open [http://localhost:3000](http://localhost:3000).
 
 ```bash
+# Production build
 npm run build
 npm start
-```
 
-### Linting
-
-```bash
+# Lint
 npm run lint
 ```
 
+---
+
+## Key Flows
+
+### Registration
+1. User visits `/register`
+2. Enters email, password (strength-enforced), and an invite code
+3. Server validates the invite code against `INVITE_CODES`
+4. Supabase sends a confirmation email
+5. User confirms and can log in
+
+### Vulnerability Feed
+1. Portal page fetches `/api/vulnerabilities` (cached 1h)
+2. Route merges CISA KEV catalog + NVD CVE details per entry
+3. Feed displays severity, CVSS score, KEV dates, ransomware flags
+4. Analyst clicks **Generate CTI Report** on any card
+
+### CTI Report Generation
+1. `POST /api/threat-intel` with CVE data as JSON
+2. Auth check + allowlist check
+3. OpenAI GPT-4o generates structured report (20+ fields, Zod-validated)
+4. Branded HTML email sent to analyst via SMTP (async, non-blocking)
+5. UI button transitions: idle → loading → **Report sent ✓**
+
+---
+
+## Design System
+
+| Token | Value | Usage |
+|---|---|---|
+| `--primary` | `#dc2626` | Brand red, CTAs |
+| `--background` | `#ffffff` / `#0a0a0a` | Light / dark |
+| `--foreground` | `#0a0a0a` / `#ffffff` | Text |
+| `--border` | `#e5e5e5` | Borders |
+
+Fonts: **Space Grotesk** (sans) · **JetBrains Mono** (mono)
+
+---
+
 ## Deployment
 
-Optimized for deployment on [Vercel](https://vercel.com) with Vercel Analytics pre-configured.
+Deployed on [Vercel](https://vercel.com). Set all environment variables in the Vercel project settings.
 
-## SEO & Metadata
-
-- **Title:** SECFORIT | Cybersecurity by Design
-- **Description:** Zero Trust architecture and expert consulting to defend what matters most. Security consulting, threat analysis, and secure development solutions.
-
-## Development Guidelines
-
-When building new pages and components for this project, follow these conventions:
-
-- Use the established CSS variable color system (`--primary`, `--foreground`, etc.)
-- Follow the existing component architecture (feature components + ui primitives)
-- Use `"use client"` directive only for interactive components
-- Apply Intersection Observer for scroll-triggered animations
-- Maintain responsive design across mobile, tablet, and desktop
-- Use the `cn()` utility from `lib/utils.ts` for conditional class merging
-- Follow shadcn/ui patterns for new UI primitives
-- Keep the red (`#dc2626`) + black (`#0a0a0a`) + white (`#ffffff`) brand identity consistent
+The threat intel route has `export const maxDuration = 120` to accommodate OpenAI response times on Vercel's serverless functions.

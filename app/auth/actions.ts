@@ -21,6 +21,7 @@ const registerSchema = z
       .regex(/[0-9]/, 'Password must include a number')
       .regex(/[^A-Za-z0-9]/, 'Password must include a special character'),
     confirmPassword: z.string(),
+    inviteCode: z.string().min(1, 'Invite code is required'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -60,11 +61,22 @@ export async function register(_: ActionState, formData: FormData): Promise<Acti
     email: formData.get('email') as string,
     password: formData.get('password') as string,
     confirmPassword: formData.get('confirmPassword') as string,
+    inviteCode: (formData.get('inviteCode') as string)?.trim(),
   }
 
   const result = registerSchema.safeParse(raw)
   if (!result.success) {
     return { error: result.error.errors[0].message }
+  }
+
+  // Validate invite code
+  const validCodes = (process.env.INVITE_CODES ?? '')
+    .split(',')
+    .map(c => c.trim())
+    .filter(Boolean)
+
+  if (validCodes.length > 0 && !validCodes.includes(result.data.inviteCode)) {
+    return { error: 'Invalid invite code.' }
   }
 
   const supabase = await createClient()

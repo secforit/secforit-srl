@@ -3,7 +3,7 @@
 import { useActionState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
+import { Loader2, Lock, Mail, ShieldCheck, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -124,6 +124,25 @@ export default function RegisterPage() {
                     className="pl-9"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="inviteCode">Invite code</Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="inviteCode"
+                    name="inviteCode"
+                    type="text"
+                    autoComplete="off"
+                    required
+                    placeholder="Enter your invite code"
+                    className="pl-9 font-mono tracking-widest"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Access is by invitation only. Contact SECFORIT to request a code.
+                </p>
               </div>
 
               <Button

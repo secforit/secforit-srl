@@ -1,521 +1,582 @@
 'use client'
 
-import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { ThreatIntelReport } from '@/app/api/threat-intel/route'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  Shield, AlertTriangle, Cpu, Target, Activity,
-  BookOpen, Wrench, Eye, Link2, ChevronRight, Mail, Loader2, CheckCircle2,
+  Shield, AlertTriangle, Target, Zap, Eye, Wrench,
+  ExternalLink, ChevronRight, AlertCircle, Flame,
+  BookOpen, Code2, FileWarning, Activity,
 } from 'lucide-react'
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function TlpBadge({ tlp }: { tlp: string }) {
+function tlpBadge(tlp: string) {
   const map: Record<string, string> = {
     WHITE: 'bg-white text-black border border-zinc-300',
     GREEN: 'bg-green-600 text-white',
     AMBER: 'bg-amber-500 text-black',
-    RED:   'bg-red-600 text-white',
+    RED: 'bg-red-600 text-white',
   }
   return (
-    <span className={`text-xs font-bold px-2.5 py-0.5 rounded font-mono ${map[tlp] ?? 'bg-zinc-500 text-white'}`}>
+    <span className={`text-xs font-bold px-2 py-0.5 rounded ${map[tlp] ?? 'bg-zinc-500 text-white'}`}>
       TLP:{tlp}
     </span>
   )
 }
 
-function SeverityBadge({ severity }: { severity: string }) {
+function severityBadge(s: string) {
   const map: Record<string, string> = {
-    CRITICAL:      'bg-red-600 text-white',
-    HIGH:          'bg-orange-500 text-white',
-    MEDIUM:        'bg-yellow-500 text-black',
-    LOW:           'bg-blue-500 text-white',
-    INFORMATIONAL: 'bg-zinc-500 text-white',
+    CRITICAL: 'bg-red-600 text-white',
+    HIGH: 'bg-orange-500 text-white',
+    MEDIUM: 'bg-yellow-500 text-black',
+    LOW: 'bg-blue-500 text-white',
   }
   return (
-    <span className={`text-xs font-bold px-2 py-0.5 rounded ${map[severity] ?? 'bg-zinc-500 text-white'}`}>
-      {severity}
+    <span className={`text-xs font-bold px-2 py-0.5 rounded ${map[s] ?? 'bg-zinc-500 text-white'}`}>{s}</span>
+  )
+}
+
+function impactBadge(v: string) {
+  if (v === 'High') return <span className="text-xs font-semibold text-red-500">High</span>
+  if (v === 'Medium') return <span className="text-xs font-semibold text-yellow-500">Medium</span>
+  if (v === 'Low') return <span className="text-xs font-semibold text-blue-500">Low</span>
+  return <span className="text-xs font-semibold text-zinc-400">None</span>
+}
+
+function confidenceBadge(c: string) {
+  const map: Record<string, string> = {
+    High: 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/30 dark:text-green-400',
+    Medium: 'bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400',
+    Low: 'bg-zinc-100 text-zinc-600 border border-zinc-300 dark:bg-zinc-800 dark:text-zinc-400',
+  }
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${map[c] ?? ''}`}>
+      {c} confidence
     </span>
   )
 }
 
-function ConfidenceBadge({ confidence }: { confidence: string }) {
-  const map: Record<string, string> = {
-    HIGH:   'bg-green-100 text-green-800 border border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800',
-    MEDIUM: 'bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400',
-    LOW:    'bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-900 dark:text-zinc-400',
-  }
+function Card({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <span className={`text-xs px-2 py-0.5 rounded font-medium ${map[confidence] ?? ''}`}>
-      Confidence: {confidence}
-    </span>
-  )
-}
-
-function ImpactDot({ level }: { level: string }) {
-  const map: Record<string, string> = { HIGH: 'bg-red-500', LOW: 'bg-yellow-500', NONE: 'bg-zinc-300' }
-  return <span className={`inline-block size-2.5 rounded-full ${map[level] ?? 'bg-zinc-300'}`} />
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{title}</h3>
-      {children}
+    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
+        <span className="text-primary">{icon}</span>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      </div>
+      <div className="p-5">{children}</div>
     </div>
   )
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2 text-sm py-1.5 border-b border-border last:border-0">
-      <span className="text-muted-foreground w-44 shrink-0">{label}</span>
-      <span className="text-foreground font-medium">{value}</span>
+    <div className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-36 mt-0.5">{label}</span>
+      <span className="text-sm text-foreground flex-1">{value}</span>
     </div>
   )
 }
 
 function List({ items }: { items: string[] }) {
+  if (!items.length) return <p className="text-xs text-muted-foreground italic">None identified</p>
   return (
     <ul className="space-y-1.5">
       {items.map((item, i) => (
         <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-          <ChevronRight className="size-3.5 shrink-0 mt-0.5 text-primary" />
-          <span>{item}</span>
+          <ChevronRight className="size-3.5 text-primary shrink-0 mt-0.5" />
+          {item}
         </li>
       ))}
     </ul>
   )
 }
 
-function CodeBlock({ platform, query, description }: { platform: string; query: string; description: string }) {
+function CodeBlock({ code }: { code: string }) {
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-secondary border-b border-border">
-        <span className="text-xs font-semibold text-foreground font-mono">{platform}</span>
-        <span className="text-xs text-muted-foreground">{description}</span>
+    <pre className="bg-zinc-950 text-green-400 text-xs rounded-lg p-4 overflow-x-auto whitespace-pre-wrap font-mono border border-zinc-800">
+      {code}
+    </pre>
+  )
+}
+
+// ─── Score Bar ────────────────────────────────────────────────────────────────
+
+function CvssBar({ score }: { score: number }) {
+  const pct = (score / 10) * 100
+  const color = score >= 9 ? 'bg-red-600' : score >= 7 ? 'bg-orange-500' : score >= 4 ? 'bg-yellow-500' : 'bg-blue-500'
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <pre className="p-4 text-xs font-mono text-foreground bg-background overflow-x-auto whitespace-pre-wrap break-all">
-        {query}
-      </pre>
+      <span className={`text-lg font-bold ${score >= 9 ? 'text-red-500' : score >= 7 ? 'text-orange-500' : score >= 4 ? 'text-yellow-500' : 'text-blue-500'}`}>
+        {score.toFixed(1)}
+      </span>
     </div>
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main Report ──────────────────────────────────────────────────────────────
 
 export function ThreatIntelReport({ report }: { report: ThreatIntelReport }) {
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-
-  async function handleSendEmail() {
-    setSending(true)
-    setSent(false)
-    try {
-      const res = await fetch('/api/threat-intel/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report }),
-      })
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}))
-        throw new Error(e.error ?? 'Send failed')
-      }
-      setSent(true)
-      setTimeout(() => setSent(false), 4000)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSending(false)
-    }
-  }
+  const { classification, vulnerability, threat_context, technical_analysis,
+    mitre_attack, impact_assessment, iocs, remediation, detection, references,
+    executive_summary, analyst_assessment } = report
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-border">
-        <TlpBadge tlp={report.classification.tlp} />
-        <SeverityBadge severity={report.classification.severity} />
-        <ConfidenceBadge confidence={report.classification.confidence} />
-        {report.threat_context.cisa_kev && (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400">
-            CISA KEV
-          </span>
-        )}
-        {report.threat_context.ransomware_linked && (
-          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950 dark:text-orange-400">
-            Ransomware Linked
-          </span>
-        )}
-        <button
-          onClick={handleSendEmail}
-          disabled={sending || sent}
-          className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${sent ? 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30' : 'border-border text-foreground hover:bg-secondary'} disabled:opacity-60`}
-        >
-          {sending ? <Loader2 className="size-3.5 animate-spin" /> : sent ? <CheckCircle2 className="size-3.5" /> : <Mail className="size-3.5" />}
-          {sending ? 'Sending…' : sent ? 'Sent!' : 'Send via Email'}
-        </button>
+
+      {/* ── Header ── */}
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {tlpBadge(classification.tlp)}
+            {severityBadge(classification.severity)}
+            {confidenceBadge(classification.confidence)}
+            {threat_context.ransomware_association && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400">
+                <Flame className="size-3" /> Ransomware
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground">{classification.report_date}</span>
+        </div>
+        <h1 className="text-xl font-bold text-foreground mb-1">
+          <span className="text-primary font-mono">{vulnerability.cve_id}</span>
+          {' — '}{vulnerability.title}
+        </h1>
+        <p className="text-sm text-muted-foreground mb-4">
+          {vulnerability.vendor} · {vulnerability.product}
+        </p>
+        <CvssBar score={vulnerability.cvss_score} />
+        <p className="text-xs text-muted-foreground mt-1 font-mono">{vulnerability.cvss_vector}</p>
       </div>
 
-      {/* Executive summary */}
-      <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
-        <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Executive Summary</p>
-        <p className="text-sm text-foreground leading-relaxed">{report.executive_summary}</p>
-      </div>
+      {/* ── Executive Summary ── */}
+      <Card title="Executive Summary" icon={<BookOpen className="size-4" />}>
+        <p className="text-sm text-foreground leading-relaxed">{executive_summary}</p>
+      </Card>
 
-      {/* Tabs */}
-      <Tabs defaultValue="vulnerability">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="vulnerability" className="gap-1.5 text-xs"><Shield className="size-3.5" />Vulnerability</TabsTrigger>
-          <TabsTrigger value="threat" className="gap-1.5 text-xs"><AlertTriangle className="size-3.5" />Threat Context</TabsTrigger>
-          <TabsTrigger value="technical" className="gap-1.5 text-xs"><Cpu className="size-3.5" />Technical</TabsTrigger>
-          <TabsTrigger value="mitre" className="gap-1.5 text-xs"><Target className="size-3.5" />MITRE ATT&CK</TabsTrigger>
-          <TabsTrigger value="impact" className="gap-1.5 text-xs"><Activity className="size-3.5" />Impact</TabsTrigger>
-          <TabsTrigger value="iocs" className="gap-1.5 text-xs"><BookOpen className="size-3.5" />IOCs</TabsTrigger>
-          <TabsTrigger value="remediation" className="gap-1.5 text-xs"><Wrench className="size-3.5" />Remediation</TabsTrigger>
-          <TabsTrigger value="detection" className="gap-1.5 text-xs"><Eye className="size-3.5" />Detection</TabsTrigger>
-          {report.references && report.references.length > 0 && (
-            <TabsTrigger value="references" className="gap-1.5 text-xs"><Link2 className="size-3.5" />References</TabsTrigger>
-          )}
+      {/* ── Tabs ── */}
+      <Tabs defaultValue="vuln">
+        <TabsList className="flex flex-wrap h-auto gap-1 bg-card border border-border p-1 rounded-xl">
+          {[
+            ['vuln', 'Vulnerability'],
+            ['threat', 'Threat Context'],
+            ['technical', 'Technical'],
+            ['mitre', 'MITRE ATT&CK'],
+            ['impact', 'Impact'],
+            ['iocs', 'IOCs'],
+            ['remediation', 'Remediation'],
+            ['detection', 'Detection'],
+            ['refs', 'References'],
+          ].map(([val, label]) => (
+            <TabsTrigger key={val} value={val} className="text-xs px-3 py-1.5 rounded-lg">
+              {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {/* Vulnerability tab */}
-        <TabsContent value="vulnerability" className="mt-4 space-y-4">
-          <Card title="Vulnerability Details">
-            <Row label="CVE ID" value={<span className="font-mono">{report.vulnerability.cve_id ?? '—'}</span>} />
-            <Row label="Title" value={report.vulnerability.title} />
-            <Row label="Type" value={report.technical_analysis.vulnerability_type} />
-            {report.vulnerability.cvss_score !== undefined && (
-              <Row label="CVSS Score" value={
-                <span className="flex items-center gap-2">
-                  <span className="font-mono font-bold">{report.vulnerability.cvss_score.toFixed(1)}</span>
-                  {report.vulnerability.cvss_vector && (
-                    <span className="font-mono text-xs text-muted-foreground">{report.vulnerability.cvss_vector}</span>
-                  )}
-                </span>
-              } />
-            )}
-            <Row label="Patch Available" value={report.vulnerability.patch_available ? '✓ Yes' : '✗ No'} />
-            <Row label="Exploit Available" value={report.vulnerability.exploit_available ? '✓ Yes' : '✗ No'} />
-            {report.vulnerability.exploit_maturity && (
-              <Row label="Exploit Maturity" value={report.vulnerability.exploit_maturity.replace(/_/g, ' ')} />
-            )}
-          </Card>
-
-          <Card title="Description">
-            <p className="text-sm text-foreground leading-relaxed">{report.vulnerability.description}</p>
-          </Card>
-
-          {report.vulnerability.cvss_breakdown && (
-            <Card title="CVSS Breakdown">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {Object.entries(report.vulnerability.cvss_breakdown)
-                  .filter(([, v]) => v)
-                  .map(([key, value], idx) => (
-                    <div key={key} className="bg-background border border-border rounded-lg px-3 py-2">
-                      <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</p>
-                      <p className="text-xs font-semibold text-foreground capitalize">{String(value).toLowerCase().replace(/_/g, ' ')}</p>
-                    </div>
-                  ))
-                }
-              </div>
-            </Card>
-          )}
-
-          <Card title="Affected Products">
-            <List items={report.vulnerability.affected_products} />
-          </Card>
-
-          {report.vulnerability.related_cves && report.vulnerability.related_cves.length > 0 && (
-            <Card title="Related CVEs">
-              <div className="flex flex-wrap gap-2">
-                {report.vulnerability.related_cves.map(cve => (
-                  <a
-                    key={cve}
-                    href={`https://nvd.nist.gov/vuln/detail/${cve}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-xs px-2 py-1 rounded bg-secondary border border-border text-primary hover:underline"
-                  >
-                    {cve}
-                  </a>
+        {/* ── Vulnerability Tab ── */}
+        <TabsContent value="vuln" className="mt-4 space-y-4">
+          <Card title="Vulnerability Details" icon={<AlertCircle className="size-4" />}>
+            <Row label="CVE ID" value={<span className="font-mono font-bold text-primary">{vulnerability.cve_id}</span>} />
+            <Row label="Advisory" value={vulnerability.vendor_advisory_id} />
+            <Row label="Patch Date" value={vulnerability.patch_release_date} />
+            <Row label="CWE" value={<span className="font-mono">{vulnerability.cwe_id} — {vulnerability.cwe_name}</span>} />
+            <Row label="Affected Versions" value={
+              <div className="flex flex-wrap gap-1">
+                {vulnerability.affected_versions.map(v => (
+                  <span key={v} className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded font-mono dark:bg-red-950 dark:text-red-400">{v}</span>
                 ))}
               </div>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Threat context tab */}
-        <TabsContent value="threat" className="mt-4 space-y-4">
-          <Card title="Threat Overview">
-            <Row label="CISA KEV" value={report.threat_context.cisa_kev ? '✓ Yes — confirmed exploited' : 'No'} />
-            <Row label="Active Exploitation" value={report.threat_context.active_exploitation ? '✓ Confirmed' : 'Not confirmed'} />
-            <Row label="Ransomware Linked" value={report.threat_context.ransomware_linked ? '✓ Yes' : 'No'} />
-          </Card>
-
-          {report.threat_context.threat_actors && report.threat_context.threat_actors.length > 0 && (
-            <Card title="Threat Actors">
-              <div className="space-y-3">
-                {report.threat_context.threat_actors.map((actor, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border">
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">{actor.name}</p>
-                      <div className="flex gap-2 mt-1">
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{actor.type.replace(/_/g, ' ')}</span>
-                        {actor.motivation && (
-                          <span className="text-xs text-muted-foreground">{actor.motivation}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+            } />
+            <Row label="Fixed Versions" value={
+              <div className="flex flex-wrap gap-1">
+                {vulnerability.fixed_versions.map(v => (
+                  <span key={v} className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded font-mono dark:bg-green-950 dark:text-green-400">{v}</span>
                 ))}
               </div>
-            </Card>
-          )}
-
-          {report.threat_context.targeted_sectors && report.threat_context.targeted_sectors.length > 0 && (
-            <Card title="Targeted Sectors">
-              <div className="flex flex-wrap gap-2">
-                {report.threat_context.targeted_sectors.map(s => (
-                  <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-secondary border border-border text-foreground">{s}</span>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {report.threat_context.targeted_regions && report.threat_context.targeted_regions.length > 0 && (
-            <Card title="Targeted Regions">
-              <div className="flex flex-wrap gap-2">
-                {report.threat_context.targeted_regions.map(r => (
-                  <span key={r} className="text-xs px-2.5 py-1 rounded-full bg-secondary border border-border text-foreground">{r}</span>
-                ))}
-              </div>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Technical tab */}
-        <TabsContent value="technical" className="mt-4 space-y-4">
-          <Card title="Attack Surface">
-            <p className="text-sm text-foreground leading-relaxed">{report.technical_analysis.attack_surface}</p>
+            } />
           </Card>
-
-          <Card title="Attack Scenario">
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{report.technical_analysis.attack_scenario}</p>
+          <Card title="CWE Explanation" icon={<FileWarning className="size-4" />}>
+            <p className="text-sm text-foreground leading-relaxed">{vulnerability.cwe_explanation}</p>
           </Card>
-
-          <Card title="Prerequisites">
-            <List items={report.technical_analysis.prerequisites} />
-          </Card>
-
-          {report.technical_analysis.post_exploitation && report.technical_analysis.post_exploitation.length > 0 && (
-            <Card title="Post-Exploitation Capabilities">
-              <List items={report.technical_analysis.post_exploitation} />
-            </Card>
-          )}
-
-          {report.technical_analysis.lateral_movement && (
-            <Card title="Lateral Movement">
-              <p className="text-sm text-foreground leading-relaxed">{report.technical_analysis.lateral_movement}</p>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* MITRE ATT&CK tab */}
-        <TabsContent value="mitre" className="mt-4 space-y-4">
-          <Card title="Tactics">
-            <div className="flex flex-wrap gap-2">
-              {report.mitre_attack.tactics.map((t, i) => (
-                <a
-                  key={t.id}
-                  href={`https://attack.mitre.org/tactics/${t.id}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary border border-border text-sm hover:border-primary transition-colors"
-                >
-                  <span className="font-mono text-xs text-primary font-bold">{t.id}</span>
-                  <span className="text-foreground">{t.name}</span>
-                </a>
-              ))}
-            </div>
-          </Card>
-
-          <Card title="Techniques">
-            <div className="space-y-2">
-              {report.mitre_attack.techniques.map((t, i) => (
-                <a
-                  key={t.id}
-                  href={`https://attack.mitre.org/techniques/${t.id.replace('.', '/')}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border hover:border-primary transition-colors"
-                >
-                  <span className="font-mono text-xs text-primary font-bold shrink-0 pt-0.5">{t.id}</span>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{t.name}</p>
-                    {t.sub_technique && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{t.sub_technique}</p>
-                    )}
-                  </div>
-                </a>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* Impact tab */}
-        <TabsContent value="impact" className="mt-4 space-y-4">
-          <Card title="CIA Triad Impact">
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Confidentiality', level: report.impact_assessment.confidentiality },
-                { label: 'Integrity',       level: report.impact_assessment.integrity },
-                { label: 'Availability',    level: report.impact_assessment.availability },
-              ].map(({ label, level }) => (
-                <div key={label} className="rounded-lg border border-border bg-background p-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-2">{label}</p>
-                  <ImpactDot level={level} />
-                  <p className="text-sm font-bold text-foreground mt-1.5">{level}</p>
+          <Card title="CVSS v3.1 Breakdown" icon={<Activity className="size-4" />}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {Object.entries(vulnerability.cvss_breakdown).map(([key, val]) => (
+                <div key={key} className="bg-background border border-border rounded-lg px-3 py-2">
+                  <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</p>
+                  <p className="text-xs font-semibold text-foreground capitalize">{val}</p>
                 </div>
               ))}
             </div>
           </Card>
-
-          <Card title="Business Impact">
-            <p className="text-sm text-foreground leading-relaxed">{report.impact_assessment.business_impact}</p>
-          </Card>
-
-          {report.impact_assessment.estimated_affected_systems && (
-            <Card title="Estimated Affected Systems">
-              <p className="text-sm text-foreground">{report.impact_assessment.estimated_affected_systems}</p>
+          {vulnerability.related_cves.length > 0 && (
+            <Card title="Related CVEs" icon={<AlertTriangle className="size-4" />}>
+              <div className="space-y-2">
+                {vulnerability.related_cves.map(c => (
+                  <div key={c.cve_id} className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border">
+                    <span className="font-mono text-sm font-bold text-primary">{c.cve_id}</span>
+                    <span className="text-sm text-muted-foreground flex-1">{c.description}</span>
+                    <span className="text-xs font-bold text-orange-500">{c.cvss_score.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
             </Card>
           )}
         </TabsContent>
 
-        {/* IOCs tab */}
+        {/* ── Threat Context Tab ── */}
+        <TabsContent value="threat" className="mt-4 space-y-4">
+          <Card title="Exploitation Status" icon={<Zap className="size-4" />}>
+            <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg font-semibold text-sm mb-4 ${
+              threat_context.exploitation_status === 'Actively Exploited in the Wild'
+                ? 'bg-red-100 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400'
+                : threat_context.exploitation_status === 'Proof-of-Concept Available'
+                ? 'bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950 dark:text-orange-400'
+                : 'bg-green-100 text-green-700 border border-green-200 dark:bg-green-950 dark:text-green-400'
+            }`}>
+              {threat_context.exploitation_status === 'Actively Exploited in the Wild' && <AlertTriangle className="size-4" />}
+              {threat_context.exploitation_status}
+            </div>
+            <p className="text-sm text-foreground leading-relaxed mb-3">{threat_context.exploitation_description}</p>
+            {threat_context.exploitation_confirmed_by.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {threat_context.exploitation_confirmed_by.map(s => (
+                  <span key={s} className="text-xs px-2 py-0.5 bg-secondary border border-border rounded-full">{s}</span>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card title="CISA KEV Catalog" icon={<Shield className="size-4" />}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`size-2.5 rounded-full ${threat_context.cisa_kev.in_catalog ? 'bg-red-500' : 'bg-zinc-400'}`} />
+              <span className="text-sm font-semibold">{threat_context.cisa_kev.in_catalog ? 'Listed in KEV Catalog' : 'Not in KEV Catalog'}</span>
+            </div>
+            {threat_context.cisa_kev.in_catalog && (
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-background border border-border rounded-lg px-3 py-2">
+                  <p className="text-muted-foreground">Date Added</p>
+                  <p className="font-semibold">{threat_context.cisa_kev.date_added}</p>
+                </div>
+                <div className="bg-background border border-border rounded-lg px-3 py-2">
+                  <p className="text-muted-foreground">Remediation Due</p>
+                  <p className="font-semibold text-red-500">{threat_context.cisa_kev.remediation_due}</p>
+                </div>
+                {threat_context.cisa_kev.directive && (
+                  <div className="col-span-2 bg-background border border-border rounded-lg px-3 py-2">
+                    <p className="text-muted-foreground">Directive</p>
+                    <p className="font-semibold">{threat_context.cisa_kev.directive}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+
+          {threat_context.threat_actors.length > 0 && (
+            <Card title="Threat Actor Attribution" icon={<Target className="size-4" />}>
+              <div className="space-y-3">
+                {threat_context.threat_actors.map((a, i) => (
+                  <div key={i} className="p-4 rounded-lg bg-background border border-border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-sm">{a.name}</span>
+                      <span className="text-xs px-2 py-0.5 bg-secondary border border-border rounded-full">{a.category}</span>
+                      {confidenceBadge(a.confidence)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{a.notes}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {threat_context.ransomware_association && (
+            <Card title="Ransomware Association" icon={<Flame className="size-4" />}>
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-800">
+                <Flame className="size-4 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground">{threat_context.ransomware_notes}</p>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Technical Tab ── */}
+        <TabsContent value="technical" className="mt-4 space-y-4">
+          <Card title="Technical Analysis" icon={<Code2 className="size-4" />}>
+            <Row label="Vuln. Class" value={<span className="font-semibold">{technical_analysis.vulnerability_class}</span>} />
+            <Row label="Component" value={technical_analysis.affected_component} />
+            <Row label="Complexity" value={technical_analysis.exploit_complexity} />
+          </Card>
+          <Card title="Root Cause" icon={<AlertTriangle className="size-4" />}>
+            <p className="text-sm text-foreground leading-relaxed">{technical_analysis.root_cause}</p>
+          </Card>
+          <Card title="Attack Prerequisites" icon={<Target className="size-4" />}>
+            <List items={technical_analysis.attack_prerequisites} />
+          </Card>
+          <Card title="Exploitation Mechanics" icon={<Zap className="size-4" />}>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{technical_analysis.exploitation_mechanics}</p>
+          </Card>
+          <Card title="Post-Exploitation Impact" icon={<AlertTriangle className="size-4" />}>
+            <Row label="Immediate Impact" value={technical_analysis.post_exploitation.immediate_impact} />
+            <Row label="Lateral Movement" value={technical_analysis.post_exploitation.lateral_movement} />
+            <Row label="Persistence" value={technical_analysis.post_exploitation.persistence} />
+            <Row label="Data at Risk" value={
+              <div className="flex flex-wrap gap-1">
+                {technical_analysis.post_exploitation.data_at_risk.map(d => (
+                  <span key={d} className="text-xs px-2 py-0.5 bg-secondary border border-border rounded-full">{d}</span>
+                ))}
+              </div>
+            } />
+          </Card>
+          <Card title="Complete Attack Scenario" icon={<BookOpen className="size-4" />}>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{technical_analysis.attack_scenario}</p>
+          </Card>
+        </TabsContent>
+
+        {/* ── MITRE Tab ── */}
+        <TabsContent value="mitre" className="mt-4 space-y-4">
+          <Card title="Tactics" icon={<Target className="size-4" />}>
+            <div className="flex flex-wrap gap-2">
+              {mitre_attack.tactics.map(t => (
+                <a
+                  key={t.id}
+                  href={`https://attack.mitre.org/tactics/${t.id}/`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors"
+                >
+                  {t.id} · {t.name}
+                  <ExternalLink className="size-2.5" />
+                </a>
+              ))}
+            </div>
+          </Card>
+          <Card title="Techniques & Sub-techniques" icon={<Activity className="size-4" />}>
+            <div className="space-y-3">
+              {mitre_attack.techniques.map(t => (
+                <div key={t.id} className="p-4 rounded-lg bg-background border border-border">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <a
+                      href={`https://attack.mitre.org/techniques/${t.id.replace('.', '/')}/`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="font-mono text-sm font-bold text-primary hover:underline flex items-center gap-1"
+                    >
+                      {t.id} <ExternalLink className="size-3" />
+                    </a>
+                    <span className="text-sm font-semibold text-foreground">{t.name}</span>
+                    <span className="text-xs px-2 py-0.5 bg-secondary border border-border rounded-full text-muted-foreground">{t.tactic}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{t.relevance}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* ── Impact Tab ── */}
+        <TabsContent value="impact" className="mt-4 space-y-4">
+          <Card title="CIA Triad Impact" icon={<Shield className="size-4" />}>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {[
+                ['Confidentiality', impact_assessment.confidentiality_impact],
+                ['Integrity', impact_assessment.integrity_impact],
+                ['Availability', impact_assessment.availability_impact],
+              ].map(([label, val]) => (
+                <div key={label} className="bg-background border border-border rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                  {impactBadge(val)}
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-foreground leading-relaxed">{impact_assessment.business_impact}</p>
+          </Card>
+          <Card title="Risk Factors" icon={<AlertTriangle className="size-4" />}>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Affected Environments</p>
+                <div className="flex flex-wrap gap-1">
+                  {impact_assessment.affected_environments.map(e => (
+                    <span key={e} className="text-xs px-2 py-0.5 bg-secondary border border-border rounded-full">{e}</span>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Risk Multipliers</p>
+                <List items={impact_assessment.risk_multipliers} />
+              </div>
+            </div>
+          </Card>
+          <Card title="Strategic Significance" icon={<Target className="size-4" />}>
+            <p className="text-sm text-foreground leading-relaxed">{impact_assessment.strategic_significance}</p>
+          </Card>
+        </TabsContent>
+
+        {/* ── IOCs Tab ── */}
         <TabsContent value="iocs" className="mt-4 space-y-4">
-          {Object.entries(report.iocs).map(([type, values]) => {
-            if (!values || (values as string[]).length === 0) return null
-            return (
-              <Card key={type} title={type.replace(/_/g, ' ').toUpperCase()}>
+          <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300">
+            <p className="font-semibold mb-1">IOC Availability Note</p>
+            <p>{iocs.availability_note}</p>
+          </div>
+          {[
+            ['File Hashes', iocs.file_hashes],
+            ['IP Addresses', iocs.ip_addresses],
+            ['Domains', iocs.domains],
+            ['File Paths', iocs.file_paths],
+            ['Commands', iocs.commands],
+            ['Network Signatures', iocs.network_signatures],
+          ].map(([label, items]) => (
+            items.length > 0 && (
+              <Card key={String(label)} title={String(label)} icon={<Code2 className="size-4" />}>
                 <div className="space-y-1">
-                  {(values as string[]).map((ioc, i) => (
-                    <p key={i} className="font-mono text-xs px-3 py-1.5 rounded bg-background border border-border text-foreground break-all">
-                      {ioc}
-                    </p>
+                  {(items as string[]).map((item, i) => (
+                    <div key={i} className="font-mono text-xs bg-background border border-border rounded p-2 break-all">{item}</div>
                   ))}
                 </div>
               </Card>
             )
-          })}
-          {Object.values(report.iocs).every(v => !v || (v as string[]).length === 0) && (
-            <div className="rounded-xl border border-border bg-card p-8 text-center">
-              <p className="text-sm text-muted-foreground">No confirmed IOCs identified for this vulnerability.</p>
-            </div>
+          ))}
+          {iocs.yara_rules.length > 0 && (
+            <Card title="YARA Rules" icon={<Code2 className="size-4" />}>
+              {iocs.yara_rules.map((rule, i) => <CodeBlock key={i} code={rule} />)}
+            </Card>
           )}
         </TabsContent>
 
-        {/* Remediation tab */}
+        {/* ── Remediation Tab ── */}
         <TabsContent value="remediation" className="mt-4 space-y-4">
-          <Card title="Priority Actions">
-            <List items={report.remediation.priority_actions} />
+          <div className={`p-4 rounded-xl border font-semibold text-sm flex items-center gap-2 ${
+            remediation.urgency.startsWith('Immediate')
+              ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-800 dark:text-red-400'
+              : remediation.urgency.startsWith('Urgent')
+              ? 'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-950/20 dark:border-orange-800 dark:text-orange-400'
+              : 'bg-yellow-50 border-yellow-200 text-yellow-700 dark:bg-yellow-950/20 dark:border-yellow-800 dark:text-yellow-400'
+          }`}>
+            <AlertTriangle className="size-4 shrink-0" />
+            <span>Urgency: {remediation.urgency}</span>
+            <span className="font-normal ml-1">— {remediation.urgency_rationale}</span>
+          </div>
+
+          <Card title="Priority Actions" icon={<Zap className="size-4" />}>
+            <ol className="space-y-2">
+              {remediation.priority_actions.map((a, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="size-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  <span className="text-sm text-foreground">{a}</span>
+                </li>
+              ))}
+            </ol>
           </Card>
 
-          <Card title="Timeline Recommendation">
-            <p className="text-sm text-foreground leading-relaxed">{report.remediation.timeline_recommendation}</p>
-          </Card>
-
-          {report.remediation.patches && report.remediation.patches.length > 0 && (
-            <Card title="Available Patches">
-              <div className="space-y-2">
-                {report.remediation.patches.map((patch, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border">
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">{patch.vendor}</p>
-                      <p className="text-xs text-muted-foreground">Version: {patch.version}</p>
-                    </div>
-                    {patch.url && (
-                      <a
-                        href={patch.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline shrink-0"
-                      >
-                        View patch →
-                      </a>
+          <Card title="Available Patches" icon={<Wrench className="size-4" />}>
+            <div className="space-y-3">
+              {remediation.patches.map((p, i) => (
+                <div key={i} className="p-4 rounded-lg bg-background border border-border">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-sm font-semibold">{p.product}</span>
+                    <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded font-mono dark:bg-green-950 dark:text-green-400">{p.fixed_version}</span>
+                    {p.kb_article !== 'N/A' && (
+                      <span className="text-xs px-2 py-0.5 bg-secondary border border-border rounded font-mono">{p.kb_article}</span>
                     )}
+                  </div>
+                  {p.notes && <p className="text-xs text-muted-foreground">{p.notes}</p>}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {remediation.workarounds.length > 0 && (
+            <Card title="Workarounds" icon={<Wrench className="size-4" />}>
+              {remediation.workarounds.map((w, i) => (
+                <div key={i} className="mb-4 p-4 rounded-lg bg-background border border-border last:mb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-semibold">{w.title}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                      w.effectiveness === 'Full Mitigation' ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400'
+                    }`}>{w.effectiveness}</span>
+                  </div>
+                  <ol className="space-y-1 mb-2">
+                    {w.steps.map((s, j) => (
+                      <li key={j} className="flex items-start gap-2 text-sm">
+                        <span className="text-muted-foreground text-xs mt-0.5">{j + 1}.</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ol>
+                  {w.limitations && <p className="text-xs text-muted-foreground italic">{w.limitations}</p>}
+                </div>
+              ))}
+            </Card>
+          )}
+
+          <Card title="Hardening Measures" icon={<Shield className="size-4" />}>
+            <List items={remediation.hardening_measures} />
+          </Card>
+        </TabsContent>
+
+        {/* ── Detection Tab ── */}
+        <TabsContent value="detection" className="mt-4 space-y-4">
+          <Card title="Log Sources" icon={<Eye className="size-4" />}>
+            <div className="flex flex-wrap gap-2">
+              {detection.log_sources.map(s => (
+                <span key={s} className="text-xs px-2 py-1 bg-secondary border border-border rounded font-mono">{s}</span>
+              ))}
+            </div>
+          </Card>
+          <Card title="Behavioral Indicators" icon={<Activity className="size-4" />}>
+            <List items={detection.behavioral_indicators} />
+          </Card>
+          {detection.detection_queries.length > 0 && (
+            <Card title="Detection Queries" icon={<Code2 className="size-4" />}>
+              <div className="space-y-4">
+                {detection.detection_queries.map((q, i) => (
+                  <div key={i}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded">{q.platform}</span>
+                      <span className="text-sm text-muted-foreground">{q.description}</span>
+                    </div>
+                    <CodeBlock code={q.query} />
                   </div>
                 ))}
               </div>
             </Card>
           )}
-
-          {report.remediation.workarounds && report.remediation.workarounds.length > 0 && (
-            <Card title="Workarounds">
-              <List items={report.remediation.workarounds} />
-            </Card>
-          )}
+          <Card title="EDR Coverage Gap" icon={<AlertTriangle className="size-4" />}>
+            <p className="text-sm text-foreground leading-relaxed">{detection.edr_gap}</p>
+          </Card>
+          <Card title="Threat Hunting" icon={<Target className="size-4" />}>
+            <List items={detection.threat_hunting} />
+          </Card>
+          <Card title="Monitoring Recommendations" icon={<Eye className="size-4" />}>
+            <List items={detection.monitoring_recommendations} />
+          </Card>
         </TabsContent>
 
-        {/* Detection tab */}
-        <TabsContent value="detection" className="mt-4 space-y-4">
-          {report.detection.detection_queries && report.detection.detection_queries.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detection Queries</h3>
-              {report.detection.detection_queries.map((q, i) => (
-                <CodeBlock key={i} platform={q.platform} query={q.query} description={q.description} />
-              ))}
+        {/* ── References Tab ── */}
+        <TabsContent value="refs" className="mt-4 space-y-2">
+          {references.map((ref, i) => (
+            <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card">
+              <span className="text-xs px-2 py-0.5 bg-secondary border border-border rounded shrink-0 mt-0.5">{ref.type}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">{ref.title}</p>
+                <p className="text-xs text-muted-foreground">{ref.source}</p>
+              </div>
+              {ref.url !== 'Not publicly available' && ref.url && (
+                <a href={ref.url} target="_blank" rel="noopener noreferrer"
+                  className="text-primary hover:underline shrink-0">
+                  <ExternalLink className="size-4" />
+                </a>
+              )}
             </div>
-          )}
-
-          {report.detection.threat_hunting && report.detection.threat_hunting.length > 0 && (
-            <Card title="Threat Hunting Recommendations">
-              <List items={report.detection.threat_hunting} />
-            </Card>
-          )}
-
-          {report.detection.log_sources && report.detection.log_sources.length > 0 && (
-            <Card title="Required Log Sources">
-              <div className="flex flex-wrap gap-2">
-                {report.detection.log_sources.map(src => (
-                  <span key={src} className="text-xs px-2.5 py-1 rounded-full bg-secondary border border-border text-foreground font-mono">{src}</span>
-                ))}
-              </div>
-            </Card>
-          )}
+          ))}
         </TabsContent>
-
-        {/* References tab */}
-        {report.references && report.references.length > 0 && (
-          <TabsContent value="references" className="mt-4">
-            <Card title="References">
-              <div className="space-y-2">
-                {report.references.map((ref, idx) => (
-                  <a
-                    key={i}
-                    href={ref.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-start gap-3 p-3 rounded-lg bg-background border border-border hover:border-primary transition-colors"
-                  >
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-secondary border border-border text-muted-foreground shrink-0 font-mono">{ref.type}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{ref.title}</p>
-                      <p className="text-xs text-primary truncate mt-0.5">{ref.url}</p>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </Card>
-          </TabsContent>
-        )}
       </Tabs>
 
-      {/* Analyst assessment */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Analyst Assessment</p>
-        <p className="text-sm text-foreground leading-relaxed">{report.analyst_assessment}</p>
-      </div>
+      {/* ── Analyst Assessment ── */}
+      <Card title="Senior Analyst Assessment" icon={<Shield className="size-4" />}>
+        <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{analyst_assessment}</p>
+      </Card>
     </div>
   )
 }

@@ -1,26 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 const NVD_URL = 'https://services.nvd.nist.gov/rest/json/cves/2.0'
 const CISA_KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 3600
-
-// Rate limit to protect NVD API key from external abuse
-// NOTE: In-memory — resets on redeploy, per-instance on serverless.
-const vulnRateMap = new Map<string, { count: number; resetAt: number }>()
-const VULN_WINDOW = 60 * 60 * 1000 // 1 hour
-const VULN_MAX = 30                 // max requests per IP per hour
-
-function isVulnRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const entry = vulnRateMap.get(ip)
-  if (!entry || now > entry.resetAt) {
-    vulnRateMap.set(ip, { count: 1, resetAt: now + VULN_WINDOW })
-    return false
-  }
-  entry.count++
-  return entry.count > VULN_MAX
-}
 
 export interface CisaKevEntry {
   cveID: string
@@ -88,13 +72,8 @@ export interface VulnApiResponse {
   lastUpdated: string
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-    if (isVulnRateLimited(ip)) {
-      return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 })
-    }
-
     const nvdHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
     if (process.env.NVD_API_KEY) nvdHeaders['apiKey'] = process.env.NVD_API_KEY
 

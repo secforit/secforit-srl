@@ -8,6 +8,8 @@ import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
 // Rate limiting — prevents brute force on login and registration
+// NOTE: In-memory maps reset on redeploy and are per-instance on serverless.
+// For production at scale, replace with Upstash Redis (@upstash/ratelimit).
 // ---------------------------------------------------------------------------
 const authAttempts = new Map<string, { count: number; resetAt: number }>()
 const AUTH_WINDOW = 15 * 60 * 1000 // 15 minutes
@@ -123,14 +125,17 @@ export async function register(_: ActionState, formData: FormData): Promise<Acti
   })
 
   if (error) {
+    // Return same message for 'user_already_exists' to prevent email enumeration
     if (error.code === 'user_already_exists') {
-      return { error: 'An account with this email already exists' }
+      return {
+        success: 'Check your email to confirm your account before logging in.',
+      }
     }
     return { error: 'Failed to create account. Please try again.' }
   }
 
   return {
-    success: 'Account created! Check your email to confirm before logging in.',
+    success: 'Check your email to confirm your account before logging in.',
   }
 }
 

@@ -22,77 +22,70 @@ function isAuthorized(email: string | undefined): boolean {
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a Senior Cyber Threat Intelligence (CTI) Analyst with 15+ years of experience across vulnerability research, threat actor tracking, malware analysis, incident response, and security operations. You hold deep expertise in:
+const SYSTEM_PROMPT = `You are a Senior Cyber Threat Intelligence (CTI) Analyst producing structured reports for SECFORIT, a cybersecurity firm in Romania, EU.
+
+## CRITICAL: Accuracy Rules
+
+1. **NEVER fabricate data.** If a detail is not in the provided input and you are not certain of it from your training data, say so explicitly (e.g., "Not publicly disclosed", "No public IOCs available", "Unknown at time of analysis").
+2. **IOCs (Indicators of Compromise):** Only include IOCs you are confident are real and publicly documented for THIS specific CVE. Do NOT invent hashes, IPs, domains, or YARA rules. If no IOCs are publicly known, leave arrays empty and explain why in availability_note.
+3. **Threat actors:** Only attribute threat actors when there is well-documented public reporting linking them to this CVE. Set confidence accordingly. If no attribution exists, return an empty array.
+4. **Detection queries:** Only provide queries that would logically detect exploitation of this specific vulnerability class. Base queries on the actual attack vector (network vs local, affected service/protocol, known exploitation behavior). Do NOT invent log event IDs or field names.
+5. **Dates:** Use ISO 8601 format (YYYY-MM-DD). For report_date use today's date from the input. Do not guess patch dates — use only what is provided or well-known.
+6. **Version numbers:** Only state affected/fixed versions that are provided in the input or that you are certain of. Do not guess version ranges.
+7. **References:** Only include URLs you are confident exist. Use the references provided in the input data. For standard sources (NVD, CISA KEV, vendor advisories), construct URLs from known patterns. Do NOT fabricate URLs.
+8. **Related CVEs:** Only list CVEs you are certain are related (same vulnerability batch, same advisory, or same component). Do not pad with unrelated CVEs.
+
+## Your Expertise
 
 - CVSS v3.1 scoring interpretation and contextual risk assessment
-- MITRE ATT&CK Enterprise Matrix (tactics, techniques, sub-techniques)
-- CISA advisories, Known Exploited Vulnerabilities (KEV) catalog, and BOD 22-01
-- Threat actor profiling (nation-state, cybercriminal, ransomware ecosystems)
-- Detection engineering (SIEM queries, YARA, behavioral analytics)
-- Regulatory frameworks: NIS2, ISO 27001, SOC 2, GDPR
+- MITRE ATT&CK Enterprise Matrix (tactics TA####, techniques T####, sub-techniques T####.###)
+- CISA Known Exploited Vulnerabilities (KEV) catalog and BOD 22-01
+- Threat actor profiling (nation-state APTs, cybercriminal groups, ransomware operators)
+- Detection engineering (SIEM, EDR, YARA, behavioral analytics)
+- EU regulatory context: NIS2 Directive, ISO 27001, GDPR
 
-## Analytical Framework
+## Classification Guidelines
 
-### Intelligence Confidence Scale
-- **High**: Multiple independent corroborating sources, direct technical evidence available
-- **Medium**: Single credible source, partial technical evidence, or vendor-confirmed but undetailed
-- **Low**: Single unconfirmed report, circumstantial indicators, or limited public disclosure
+### TLP (Traffic Light Protocol)
+- WHITE: Publicly disclosed CVE with public advisories — use for most reports
+- GREEN: Limited public detail but shared in security community
+- AMBER: Pre-disclosure or sensitive organizational context
+- RED: Named recipient only
 
-### Traffic Light Protocol (TLP)
-- TLP:WHITE — Publicly disclosed, unrestricted redistribution permitted
-- TLP:GREEN — Shared within the security community, not for public posting
-- TLP:AMBER — Limited distribution within the recipient organization only
-- TLP:RED — Restricted to named recipients, not for further sharing
+### Confidence
+- High: CVE is well-documented with multiple sources, vendor confirmed, CVSS scored
+- Medium: CVE confirmed but limited technical detail available
+- Low: Early disclosure, limited information, unconfirmed reports
 
-### MITRE ATT&CK Mapping (Enterprise Matrix)
-Map ALL observed or reasonably inferred adversary behaviors to Tactics (TA####), Techniques (T####), and Sub-techniques (T####.###) using EXACT official IDs and names.
+### Severity
+Mirror the CVSS baseSeverity from input data. If CVSS is unavailable, assess based on vulnerability class and exploitation status.
 
-## Intelligence Extraction Requirements
-
-### Vulnerability Intelligence
-- All CVE identifiers with CVSS v3.1 vector string and base score
-- CWE classification with precise technical explanation
-- Affected products and vulnerable version ranges
-- Fixed/patched versions with patch dates
-- Vendor advisory IDs and co-disclosed CVEs
-- Workaround details and KB article references
-
-### Threat Context
-- Exploitation status with confirming organizations
-- CISA KEV catalog entry: date added, mandatory remediation deadline, governing directive
-- Named threat actor attribution with confidence level
-- Ransomware campaign associations
+## Analysis Guidelines
 
 ### Technical Analysis
-- Root cause at code/architecture level
-- Exact affected component, function, or endpoint
-- Full exploitation mechanics step-by-step
-- All prerequisites: auth state, network position, user interaction
-- Post-exploitation capabilities: RCE, credential theft, lateral movement, persistence
+- Root cause: Explain the underlying code/design flaw (e.g., improper input validation, use-after-free, missing authorization check)
+- Exploitation mechanics: Describe how an attacker would realistically exploit this based on the attack vector, complexity, and prerequisites from CVSS
+- Post-exploitation: Assess realistic impact based on the vulnerability class — what can an attacker actually achieve?
 
-### Indicators of Compromise
-Extract ALL available IOCs. If none exist, explicitly state why (too recent, no malware samples published, etc.)
+### MITRE ATT&CK Mapping
+Map to tactics and techniques that are directly relevant to how this vulnerability would be exploited and what it enables. Use EXACT official IDs (e.g., TA0001, T1190). Only include mappings you can justify.
 
-### Remediation Intelligence
-- Patch urgency calibrated to CVSS score + active exploitation
-- Every patch option per product with exact version numbers
-- Every workaround with step-by-step implementation and effectiveness rating
-- Hardening measures and network segmentation recommendations
-- Federal compliance deadlines
+### Remediation
+- Urgency: Calibrate to CVSS score + exploitation status (actively exploited = Immediate, PoC available = Urgent, theoretical = High/Moderate)
+- Patches: Use only version numbers from the input data
+- Workarounds: Provide realistic, implementable mitigations based on the vulnerability class
+- Hardening: Recommend defense-in-depth measures relevant to the affected technology
 
-### Detection Engineering
-- Specific log sources and event IDs capturing exploitation
-- Behavioral indicators: process trees, network connections, file artifacts
-- Detection queries (Splunk SPL, KQL for Sentinel, or YARA)
-- EDR/endpoint visibility gaps specific to this product
-- Threat hunting recommendations
+### Detection
+- Focus on log sources and behavioral indicators relevant to the specific product and attack vector
+- Detection queries should target the actual exploitation behavior, not generic patterns
+- Be explicit about detection gaps
 
-## Output Quality Standards
-- **Precise**: Exact version numbers, ISO 8601 dates, MITRE IDs, CVSS vectors
-- **Actionable**: Every section enables immediate defensive action
-- **Evidence-based**: Attribute claims to sources, do not fabricate details
-- **Transparent about gaps**: State what is unknown and why
-- **Proportionate**: Calibrate urgency to actual exploitation evidence`
+## Executive Summary
+Write 2-3 sentences: what the vulnerability is, who it affects, whether it's being exploited, and the recommended action. Be direct and factual.
+
+## Analyst Assessment
+Provide a brief expert opinion on: real-world risk beyond the CVSS score, strategic implications, and what organizations should prioritize. Ground this in the facts provided.`
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -291,7 +284,22 @@ export async function POST(req: NextRequest) {
     }
 
     const doc = buildCveDocument(cve_data)
-    const userContent = `Analyze the following vulnerability intelligence data and generate a comprehensive structured CTI report. Use your knowledge to enrich the analysis beyond what is provided — include MITRE ATT&CK mapping, exploitation mechanics, detection queries, and post-exploitation analysis. For fields not in the provided data, apply your expert knowledge of this vulnerability class. Where specific details are not publicly known, state this clearly.\n\n${doc}`
+    const today = new Date().toISOString().split('T')[0]
+    const userContent = `Today's date: ${today}
+
+Analyze the vulnerability data below and produce a structured CTI report.
+
+IMPORTANT INSTRUCTIONS:
+- Use the provided data as your primary source of truth for all factual fields (CVE ID, CVSS score/vector, CWE, vendor, product, versions, dates, CISA KEV status, references).
+- Copy factual data exactly — do not modify CVSS scores, version numbers, or dates from the input.
+- Add your expert analysis for: root cause explanation, exploitation mechanics, MITRE ATT&CK mapping, detection guidance, remediation prioritization, and analyst assessment.
+- For IOCs: only include indicators you are certain are publicly documented for this specific CVE. If none are known, leave arrays empty and explain in availability_note.
+- For threat actors: only attribute if well-documented public reporting exists. Otherwise return an empty array.
+- For references: include the URLs provided in the input data plus standard sources (NVD page, CISA KEV entry if applicable, vendor advisory if identifiable). Do not invent URLs.
+- For related CVEs: only include CVEs you are confident are related (same advisory, same component, or same vulnerability batch).
+- Set report_date to "${today}".
+
+${doc}`
 
     const completion = await client.chat.completions.parse({
       model: 'gpt-4o-2024-08-06',
@@ -352,7 +360,6 @@ async function sendReportEmail(report: ThreatIntelReport, recipientEmail: string
     port: parseInt(SMTP_PORT, 10),
     secure: true,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
-    tls: { rejectUnauthorized: false },
   })
 
   const severityColor: Record<string, string> = {
@@ -723,44 +730,57 @@ Handle per TLP:${c.tlp} guidelines.`
 function buildCveDocument(cve: Record<string, any>): string {
   const desc = cve.descriptions?.find((d: { lang: string }) => d.lang === 'en')?.value ?? cve.shortDescription ?? 'N/A'
   const cvss = cve.metrics?.cvssMetricV31?.[0]?.cvssData
+  const cvssMetric = cve.metrics?.cvssMetricV31?.[0]
   const cwe = cve.weaknesses?.[0]?.description?.find((d: { lang: string }) => d.lang === 'en')?.value ?? 'N/A'
-  const refs = (cve.references ?? []).map((r: { url: string }) => r.url).join('\n  - ')
+  const refs = (cve.references ?? []) as Array<{ url: string; tags?: string[] }>
+  const refsFormatted = refs.length > 0
+    ? refs.map(r => `  - ${r.url}${r.tags?.length ? ` [${r.tags.join(', ')}]` : ''}`).join('\n')
+    : '  - None provided'
 
-  return `## Vulnerability Intelligence Brief
+  const inKev = !!(cve.cisaExploitAdd || cve.dateAdded)
 
-**CVE ID**: ${cve.id ?? 'Unknown'}
-**Vulnerability Name**: ${cve.cisaVulnerabilityName ?? cve.id ?? 'N/A'}
-**Vendor / Product**: ${cve.vendorProject ?? 'N/A'} — ${cve.product ?? 'N/A'}
+  return `## SOURCE DATA — Use this as the primary source of truth
 
-### CVSS Scoring
-- Base Score: ${cvss?.baseScore ?? 'N/A'} (${cvss?.baseSeverity ?? 'N/A'})
-- Vector: ${cvss?.vectorString ?? 'N/A'}
-- Attack Vector: ${cvss?.attackVector ?? 'N/A'}
-- Attack Complexity: ${cvss?.attackComplexity ?? 'N/A'}
-- Privileges Required: ${cvss?.privilegesRequired ?? 'N/A'}
-- User Interaction: ${cvss?.userInteraction ?? 'N/A'}
-- Scope: ${cvss?.scope ?? 'N/A'}
-- Confidentiality / Integrity / Availability: ${cvss?.confidentialityImpact ?? 'N/A'} / ${cvss?.integrityImpact ?? 'N/A'} / ${cvss?.availabilityImpact ?? 'N/A'}
+### Identification
+- CVE ID: ${cve.id ?? 'Unknown'}
+- Vulnerability Name: ${cve.cisaVulnerabilityName ?? 'N/A'}
+- Vendor: ${cve.vendorProject ?? 'N/A'}
+- Product: ${cve.product ?? 'N/A'}
 
-### Weakness Classification
-- CWE: ${cwe}
-
-### Description
+### Description (from NVD/CISA)
 ${desc}
 
-### Publication Dates
+### CVSS v3.1 Scoring${cvss ? `
+- Base Score: ${cvss.baseScore} (${cvss.baseSeverity})
+- Vector String: ${cvss.vectorString}
+- Attack Vector: ${cvss.attackVector}
+- Attack Complexity: ${cvss.attackComplexity}
+- Privileges Required: ${cvss.privilegesRequired}
+- User Interaction: ${cvss.userInteraction}
+- Scope: ${cvss.scope}
+- Confidentiality Impact: ${cvss.confidentialityImpact}
+- Integrity Impact: ${cvss.integrityImpact}
+- Availability Impact: ${cvss.availabilityImpact}${cvssMetric?.exploitabilityScore != null ? `\n- Exploitability Score: ${cvssMetric.exploitabilityScore}` : ''}${cvssMetric?.impactScore != null ? `\n- Impact Score: ${cvssMetric.impactScore}` : ''}` : '\n- No CVSS v3.1 data available'}
+
+### Weakness
+- CWE: ${cwe}
+
+### Dates
 - NVD Published: ${cve.published ?? 'N/A'}
 - NVD Last Modified: ${cve.lastModified ?? 'N/A'}
 
-### CISA KEV Status
-- In Catalog: ${cve.cisaExploitAdd || cve.dateAdded ? 'Yes' : 'Unknown'}
-- Date Added: ${cve.dateAdded ?? cve.cisaExploitAdd ?? 'N/A'}
-- Remediation Due: ${cve.cisaActionDue ?? 'N/A'}
-- Required Action: ${cve.cisaRequiredAction ?? 'N/A'}
+### CISA KEV Catalog
+- In Catalog: ${inKev ? 'YES' : 'Unknown / Not found'}${inKev ? `
+- Date Added to KEV: ${cve.dateAdded ?? cve.cisaExploitAdd ?? 'N/A'}
+- Remediation Due Date: ${cve.cisaActionDue ?? 'N/A'}
+- Required Action: ${cve.cisaRequiredAction ?? 'N/A'}` : ''}
 
-### Known Ransomware Association
-${cve.knownRansomwareCampaignUse === 'Known' ? 'Yes — linked to active ransomware campaigns' : cve.knownRansomwareCampaignUse ?? 'Not specified'}
+### Ransomware Association
+- Known Ransomware Campaign Use: ${cve.knownRansomwareCampaignUse === 'Known' ? 'YES — linked to active ransomware campaigns' : cve.knownRansomwareCampaignUse === 'Unknown' ? 'Unknown' : cve.knownRansomwareCampaignUse ?? 'Not specified'}
 
-### References
-  - ${refs || 'N/A'}`
+### References (from NVD)
+${refsFormatted}
+
+---
+NOTE: The data above comes from NVD and CISA KEV. Use it as-is for factual fields. Apply your expertise for analysis, MITRE mapping, detection, and remediation guidance. Do not fabricate any data not grounded in the input or your confident knowledge of this CVE.`
 }

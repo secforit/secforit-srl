@@ -187,9 +187,9 @@ export async function POST(req: NextRequest) {
         // Silently succeed so bots think it worked
         return NextResponse.json({ success: true })
       }
-    } else if (process.env.RECAPTCHA_SECRET_KEY) {
-      // If reCAPTCHA is configured but no token was sent, reject
-      return NextResponse.json({ success: true }) // silent fake success
+    } else if (process.env.RECAPTCHA_PROJECT_ID && process.env.GOOGLE_API_KEY) {
+      // reCAPTCHA Enterprise is configured but no token was sent — reject silently
+      return NextResponse.json({ success: true })
     }
 
     // --- Validate ---
@@ -216,14 +216,10 @@ export async function POST(req: NextRequest) {
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: parseInt(SMTP_PORT, 10),
-      secure: true, // SSL/TLS on port 465
+      secure: true,
       auth: {
         user: SMTP_USER,
         pass: SMTP_PASS,
-      },
-      tls: {
-        // Allow self-signed certs if needed (common with cPanel)
-        rejectUnauthorized: false,
       },
     })
 

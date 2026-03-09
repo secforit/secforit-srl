@@ -24,14 +24,24 @@ function isRateLimited(ip: string): boolean {
 // ---------------------------------------------------------------------------
 // Input validation & sanitization
 // ---------------------------------------------------------------------------
-function sanitize(str: string): string {
+
+/** HTML-escape all dangerous characters to prevent injection in email templates */
+function escapeHtml(str: string): string {
   return str
-    .replace(/[<>]/g, "") // strip angle brackets (basic XSS prevention)
-    .trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function sanitize(str: string): string {
+  return escapeHtml(str.trim())
 }
 
 function isValidEmail(email: string): boolean {
-  // RFC 5322 simplified — covers real-world addresses
+  // RFC 5321: max 254 chars; RFC 5322 simplified format check
+  if (email.length > 254) return false
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 

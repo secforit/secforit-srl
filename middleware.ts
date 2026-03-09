@@ -34,10 +34,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: this call refreshes the access token when it has expired,
-  // using the refresh token stored in the cookie. Without it, users are
-  // silently logged out after the JWT expiry window.
-  await supabase.auth.getUser()
+  // Refresh the access token when it has expired using the refresh token.
+  // Without this call, users are silently logged out after the JWT expiry.
+  try {
+    await supabase.auth.getUser()
+  } catch {
+    // If token refresh fails, continue with the request — protected pages
+    // will individually check auth and redirect to login if needed.
+  }
 
   return supabaseResponse
 }

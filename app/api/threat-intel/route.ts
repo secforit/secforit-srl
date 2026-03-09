@@ -247,6 +247,23 @@ const ThreatIntelSchema = z.object({
 
 export type ThreatIntelReport = z.infer<typeof ThreatIntelSchema>
 
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+
+const intelRateMap = new Map<string, { count: number; resetAt: number }>()
+const INTEL_WINDOW = 60 * 60 * 1000 // 1 hour
+const INTEL_MAX = 10                 // max reports per user per hour
+
+function isIntelRateLimited(userId: string): boolean {
+  const now = Date.now()
+  const entry = intelRateMap.get(userId)
+  if (!entry || now > entry.resetAt) {
+    intelRateMap.set(userId, { count: 1, resetAt: now + INTEL_WINDOW })
+    return false
+  }
+  entry.count++
+  return entry.count > INTEL_MAX
+}
+
 // ─── Route Handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -259,6 +276,11 @@ export async function POST(req: NextRequest) {
     }
     if (!isAuthorized(user.email)) {
       return NextResponse.json({ error: 'Your account is not authorized to generate threat intelligence reports.' }, { status: 403 })
+    }
+
+    // Rate limit per user
+    if (isIntelRateLimited(user.id)) {
+      return NextResponse.json({ error: 'Rate limit exceeded. Maximum 10 reports per hour.' }, { status: 429 })
     }
 
     const body = await req.json()
@@ -304,12 +326,10 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('Threat intel error:', err)
+    // Never leak internal error details to the client
     if (err instanceof OpenAI.APIError) {
       if (err.status === 401) {
-        return NextResponse.json({ error: 'Invalid OpenAI API key.' }, { status: 401 })
-      }
-      if (err.status === 400) {
-        return NextResponse.json({ error: 'Invalid request: ' + err.message }, { status: 400 })
+        return NextResponse.json({ error: 'AI service configuration error.' }, { status: 500 })
       }
     }
     return NextResponse.json({ error: 'Failed to generate report. Please try again.' }, { status: 500 })

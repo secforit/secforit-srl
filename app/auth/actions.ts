@@ -2,8 +2,33 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+
+// ---------------------------------------------------------------------------
+// Rate limiting — prevents brute force on login and registration
+// ---------------------------------------------------------------------------
+const authAttempts = new Map<string, { count: number; resetAt: number }>()
+const AUTH_WINDOW = 15 * 60 * 1000 // 15 minutes
+const AUTH_MAX_LOGIN = 5            // max login attempts per window
+const AUTH_MAX_REGISTER = 3         // max register attempts per window
+
+async function getClientIp(): Promise<string> {
+  const h = await headers()
+  return h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+}
+
+function isAuthRateLimited(key: string, max: number): boolean {
+  const now = Date.now()
+  const entry = authAttempts.get(key)
+  if (!entry || now > entry.resetAt) {
+    authAttempts.set(key, { count: 1, resetAt: now + AUTH_WINDOW })
+    return false
+  }
+  entry.count++
+  return entry.count > max
+}
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -34,9 +59,14 @@ export type ActionState = {
 } | null
 
 export async function login(_: ActionState, formData: FormData): Promise<ActionState> {
+  const ip = await getClientIp()
+  if (isAuthRateLimited(`login:${ip}`, AUTH_MAX_LOGIN)) {
+    return { error: 'Too many login attempts. Please try again in 15 minutes.' }
+  }
+
   const raw = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+    email: (formData.get('email') as string | null) ?? '',
+    password: (formData.get('password') as string | null) ?? '',
   }
 
   const result = loginSchema.safeParse(raw)
@@ -48,7 +78,6 @@ export async function login(_: ActionState, formData: FormData): Promise<ActionS
   const { error } = await supabase.auth.signInWithPassword(result.data)
 
   if (error) {
-    // Generic message to avoid user enumeration
     return { error: 'Invalid email or password' }
   }
 
@@ -57,11 +86,16 @@ export async function login(_: ActionState, formData: FormData): Promise<ActionS
 }
 
 export async function register(_: ActionState, formData: FormData): Promise<ActionState> {
+  const ip = await getClientIp()
+  if (isAuthRateLimited(`register:${ip}`, AUTH_MAX_REGISTER)) {
+    return { error: 'Too many registration attempts. Please try again in 15 minutes.' }
+  }
+
   const raw = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-    confirmPassword: formData.get('confirmPassword') as string,
-    inviteCode: (formData.get('inviteCode') as string)?.trim(),
+    email: (formData.get('email') as string | null) ?? '',
+    password: (formData.get('password') as string | null) ?? '',
+    confirmPassword: (formData.get('confirmPassword') as string | null) ?? '',
+    inviteCode: ((formData.get('inviteCode') as string | null) ?? '').trim(),
   }
 
   const result = registerSchema.safeParse(raw)

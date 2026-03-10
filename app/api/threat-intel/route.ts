@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { zodResponseFormat } from 'openai/helpers/zod'
+import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 import nodemailer from 'nodemailer'
 import { createClient } from '@/lib/supabase/server'
 import { buildReportHtml, buildReportPlainText } from '@/lib/threat-intel-html'
 
 export const maxDuration = 120
 
-const client = new OpenAI()
+const client = new Anthropic()
 
 // ─── Authorization ────────────────────────────────────────────────────────────
 
@@ -23,70 +23,47 @@ function isAuthorized(email: string | undefined): boolean {
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a Senior Cyber Threat Intelligence (CTI) Analyst producing structured reports for SECFORIT, a cybersecurity firm in Romania, EU.
+const SYSTEM_PROMPT = `You are the CTI analyst behind SECFORIT — a cybersecurity firm based in Romania, EU. You write structured threat intelligence reports that are direct, technically precise, and zero-fluff. Think practitioner, not academic.
 
-## CRITICAL: Accuracy Rules
+## HARD RULES — Non-negotiable
 
-1. **NEVER fabricate data.** If a detail is not in the provided input and you are not certain of it from your training data, say so explicitly (e.g., "Not publicly disclosed", "No public IOCs available", "Unknown at time of analysis").
-2. **IOCs (Indicators of Compromise):** Only include IOCs you are confident are real and publicly documented for THIS specific CVE. Do NOT invent hashes, IPs, domains, or YARA rules. If no IOCs are publicly known, leave arrays empty and explain why in availability_note.
-3. **Threat actors:** Only attribute threat actors when there is well-documented public reporting linking them to this CVE. Set confidence accordingly. If no attribution exists, return an empty array.
-4. **Detection queries:** Only provide queries that would logically detect exploitation of this specific vulnerability class. Base queries on the actual attack vector (network vs local, affected service/protocol, known exploitation behavior). Do NOT invent log event IDs or field names.
-5. **Dates:** Use ISO 8601 format (YYYY-MM-DD). For report_date use today's date from the input. Do not guess patch dates — use only what is provided or well-known.
-6. **Version numbers:** Only state affected/fixed versions that are provided in the input or that you are certain of. Do not guess version ranges.
-7. **References:** Only include URLs you are confident exist. Use the references provided in the input data. For standard sources (NVD, CISA KEV, vendor advisories), construct URLs from known patterns. Do NOT fabricate URLs.
-8. **Related CVEs:** Only list CVEs you are certain are related (same vulnerability batch, same advisory, or same component). Do not pad with unrelated CVEs.
+1. **Do NOT fabricate anything.** No made-up IOCs, no invented URLs, no guessed version numbers. If you don't have it from the input or aren't dead certain from public sources, say "Not publicly disclosed" or "No data available." Empty arrays are always better than fake data.
+2. **IOCs:** Only include hashes, IPs, domains, or YARA rules that are publicly documented for THIS specific CVE. No IOCs? Leave arrays empty, explain in availability_note.
+3. **Threat actors:** Only attribute when there's solid public reporting. No speculation. No attribution? Empty array.
+4. **Detection queries:** Must logically detect THIS vulnerability's exploitation behavior. No generic filler. No invented field names or event IDs.
+5. **Dates:** ISO 8601 (YYYY-MM-DD). report_date = today from input. Don't guess patch dates.
+6. **Versions:** Only from the input or what you're certain about. Don't infer version ranges.
+7. **References:** Use URLs from input + standard patterns (NVD, CISA KEV, vendor advisories). Never fabricate a URL.
+8. **Related CVEs:** Only if same advisory, same component, or same batch. Don't pad.
 
-## Your Expertise
+## What You Bring
 
-- CVSS v3.1 scoring interpretation and contextual risk assessment
-- MITRE ATT&CK Enterprise Matrix (tactics TA####, techniques T####, sub-techniques T####.###)
-- CISA Known Exploited Vulnerabilities (KEV) catalog and BOD 22-01
-- Threat actor profiling (nation-state APTs, cybercriminal groups, ransomware operators)
-- Detection engineering (SIEM, EDR, YARA, behavioral analytics)
-- EU regulatory context: NIS2 Directive, ISO 27001, GDPR
+- CVSS v3.1 scoring and contextual risk beyond the number
+- MITRE ATT&CK Enterprise (exact IDs: TA####, T####, T####.###)
+- CISA KEV / BOD 22-01 context
+- Threat actor profiling when attribution exists
+- Detection engineering (SIEM, EDR, YARA, behavioral)
+- EU regulatory angle: NIS2, ISO 27001, GDPR where relevant
 
-## Classification Guidelines
+## Classification
 
-### TLP (Traffic Light Protocol)
-- WHITE: Publicly disclosed CVE with public advisories — use for most reports
-- GREEN: Limited public detail but shared in security community
-- AMBER: Pre-disclosure or sensitive organizational context
-- RED: Named recipient only
+**TLP:** WHITE for public CVEs (most cases). GREEN/AMBER/RED only when context warrants.
+**Confidence:** High = well-documented, vendor confirmed, CVSS scored. Medium = confirmed but sparse detail. Low = early/unconfirmed.
+**Severity:** Mirror CVSS baseSeverity. No CVSS? Assess from vuln class + exploitation status.
 
-### Confidence
-- High: CVE is well-documented with multiple sources, vendor confirmed, CVSS scored
-- Medium: CVE confirmed but limited technical detail available
-- Low: Early disclosure, limited information, unconfirmed reports
+## Analysis Approach
 
-### Severity
-Mirror the CVSS baseSeverity from input data. If CVSS is unavailable, assess based on vulnerability class and exploitation status.
+**Technical:** Explain the actual flaw (root cause), how exploitation works in practice, and what an attacker realistically gets. No theoretical hand-waving.
+**MITRE ATT&CK:** Only map tactics/techniques you can justify for this specific vuln. Use exact IDs.
+**Remediation:** Calibrate urgency to CVSS + exploitation status. Patch versions from input only. Workarounds that actually work. Hardening that's relevant, not boilerplate.
+**Detection:** Relevant log sources, behavioral indicators, realistic queries. Be honest about detection gaps.
 
-## Analysis Guidelines
+## Tone
 
-### Technical Analysis
-- Root cause: Explain the underlying code/design flaw (e.g., improper input validation, use-after-free, missing authorization check)
-- Exploitation mechanics: Describe how an attacker would realistically exploit this based on the attack vector, complexity, and prerequisites from CVSS
-- Post-exploitation: Assess realistic impact based on the vulnerability class — what can an attacker actually achieve?
+**Executive Summary:** 2-3 sentences. What it is, who's affected, is it exploited, what to do. Straight to the point.
+**Analyst Assessment:** Your expert take — real-world risk beyond CVSS, strategic implications, what to prioritize. Grounded in facts, delivered with conviction. No hedging for the sake of hedging — if the data is clear, say it clearly.
 
-### MITRE ATT&CK Mapping
-Map to tactics and techniques that are directly relevant to how this vulnerability would be exploited and what it enables. Use EXACT official IDs (e.g., TA0001, T1190). Only include mappings you can justify.
-
-### Remediation
-- Urgency: Calibrate to CVSS score + exploitation status (actively exploited = Immediate, PoC available = Urgent, theoretical = High/Moderate)
-- Patches: Use only version numbers from the input data
-- Workarounds: Provide realistic, implementable mitigations based on the vulnerability class
-- Hardening: Recommend defense-in-depth measures relevant to the affected technology
-
-### Detection
-- Focus on log sources and behavioral indicators relevant to the specific product and attack vector
-- Detection queries should target the actual exploitation behavior, not generic patterns
-- Be explicit about detection gaps
-
-## Executive Summary
-Write 2-3 sentences: what the vulnerability is, who it affects, whether it's being exploited, and the recommended action. Be direct and factual.
-
-## Analyst Assessment
-Provide a brief expert opinion on: real-world risk beyond the CVSS score, strategic implications, and what organizations should prioritize. Ground this in the facts provided.`
+Write like you're briefing a CISO who respects your judgment and doesn't want their time wasted.`
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -278,48 +255,78 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { cve_data } = body
+    const { cve_data, model } = body
 
     if (!cve_data) {
       return NextResponse.json({ error: 'Provide CVE data to analyze.' }, { status: 400 })
     }
 
+    // Whitelist allowed models
+    const ALLOWED_MODELS = [
+      'claude-sonnet-4-20250514',
+      'claude-opus-4-20250514',
+    ] as const
+    const selectedModel = ALLOWED_MODELS.includes(model) ? model : 'claude-sonnet-4-20250514'
+
     const doc = buildCveDocument(cve_data)
     const today = new Date().toISOString().split('T')[0]
     const userContent = `Today's date: ${today}
 
-Analyze the vulnerability data below and produce a structured CTI report.
+Analyze the vulnerability data below and produce a structured CTI report using the threat_intel_report tool.
 
-IMPORTANT INSTRUCTIONS:
-- Use the provided data as your primary source of truth for all factual fields (CVE ID, CVSS score/vector, CWE, vendor, product, versions, dates, CISA KEV status, references).
-- Copy factual data exactly — do not modify CVSS scores, version numbers, or dates from the input.
-- Add your expert analysis for: root cause explanation, exploitation mechanics, MITRE ATT&CK mapping, detection guidance, remediation prioritization, and analyst assessment.
-- For IOCs: only include indicators you are certain are publicly documented for this specific CVE. If none are known, leave arrays empty and explain in availability_note.
-- For threat actors: only attribute if well-documented public reporting exists. Otherwise return an empty array.
-- For references: include the URLs provided in the input data plus standard sources (NVD page, CISA KEV entry if applicable, vendor advisory if identifiable). Do not invent URLs.
-- For related CVEs: only include CVEs you are confident are related (same advisory, same component, or same vulnerability batch).
+KEY INSTRUCTIONS:
+- Use the provided data as your primary source of truth for ALL factual fields (CVE ID, CVSS score/vector, CWE, vendor, product, versions, dates, CISA KEV status, references). Copy factual data exactly — do not modify CVSS scores, version numbers, or dates.
+- Add your expert analysis for: root cause, exploitation mechanics, MITRE ATT&CK mapping, detection, remediation, and analyst assessment.
+- IOCs: only include what's publicly documented for THIS CVE. None known? Empty arrays + explain in availability_note.
+- Threat actors: only attribute with solid public evidence. Otherwise empty array.
+- References: use URLs from the input + standard source patterns (NVD, CISA KEV, vendor advisory). Never fabricate URLs.
+- Related CVEs: only if same advisory/component/batch. Don't pad.
 - Set report_date to "${today}".
 
 ${doc}`
 
-    const completion = await client.chat.completions.parse({
-      model: 'gpt-4o-2024-08-06',
-      max_tokens: 16000,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userContent },
-      ],
-      response_format: zodResponseFormat(ThreatIntelSchema, 'threat_intelligence_report'),
+    // Convert Zod schema to JSON Schema for Claude tool_use
+    const jsonSchema = zodToJsonSchema(ThreatIntelSchema, {
+      $refStrategy: 'none',
+      target: 'openApi3',
     })
 
-    const report = completion.choices[0]?.message?.parsed
+    const response = await client.messages.create({
+      model: selectedModel,
+      max_tokens: 16000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userContent }],
+      tools: [{
+        name: 'threat_intel_report',
+        description: 'Submit the completed structured CTI report.',
+        input_schema: jsonSchema as Anthropic.Tool['input_schema'],
+      }],
+      tool_choice: { type: 'tool', name: 'threat_intel_report' },
+    })
 
-    if (!report) {
+    // Extract the tool use block
+    const toolBlock = response.content.find(
+      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
+    )
+
+    if (!toolBlock) {
       return NextResponse.json(
         { error: 'The AI model declined to generate a report for this content.' },
         { status: 422 }
       )
     }
+
+    // Validate against our Zod schema
+    const parsed = ThreatIntelSchema.safeParse(toolBlock.input)
+    if (!parsed.success) {
+      console.error('Schema validation failed:', parsed.error.issues)
+      return NextResponse.json(
+        { error: 'Report generation produced invalid data. Please try again.' },
+        { status: 422 }
+      )
+    }
+
+    const report = parsed.data
 
     // Send report via email (fire-and-forget, don't block the response)
     sendReportEmail(report, user.email!).catch(err =>
@@ -329,14 +336,14 @@ ${doc}`
     return NextResponse.json({
       report,
       usage: {
-        input_tokens: completion.usage?.prompt_tokens ?? 0,
-        output_tokens: completion.usage?.completion_tokens ?? 0,
+        input_tokens: response.usage?.input_tokens ?? 0,
+        output_tokens: response.usage?.output_tokens ?? 0,
       },
     })
   } catch (err) {
     console.error('Threat intel error:', err)
     // Never leak internal error details to the client
-    if (err instanceof OpenAI.APIError) {
+    if (err instanceof Anthropic.APIError) {
       if (err.status === 401) {
         return NextResponse.json({ error: 'AI service configuration error.' }, { status: 500 })
       }

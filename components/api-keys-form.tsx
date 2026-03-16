@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Key, Loader2, AlertTriangle, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { Key, Loader2, AlertTriangle, Check, Eye, EyeOff, Trash2 } from 'lucide-react'
 
 interface KeyState {
   anthropic_api_key: string | null
@@ -101,7 +101,9 @@ export function ApiKeysForm() {
     <div className="space-y-6">
       {message && (
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 flex items-center gap-2 text-sm text-foreground backdrop-blur-sm">
-          <AlertTriangle className="size-4 shrink-0 text-red-500" />
+          {message.type === 'success'
+            ? <Check className="size-4 shrink-0 text-red-500" />
+            : <AlertTriangle className="size-4 shrink-0 text-red-500" />}
           {message.text}
         </div>
       )}

@@ -14,7 +14,7 @@ export function ApiKeysForm() {
   const [keys, setKeys] = useState<KeyState | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const [anthropicKey, setAnthropicKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
@@ -33,7 +33,7 @@ export function ApiKeysForm() {
 
   async function handleSave(provider: 'anthropic' | 'openai') {
     setSaving(true)
-    setError(null)
+    setMessage(null)
 
     const body = provider === 'anthropic'
       ? { anthropic_api_key: anthropicKey }
@@ -47,15 +47,16 @@ export function ApiKeysForm() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error)
+        setMessage({ type: 'error', text: data.error })
       } else {
+        setMessage({ type: 'success', text: `${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key saved.` })
         if (provider === 'anthropic') setAnthropicKey('')
         else setOpenaiKey('')
         const refresh = await fetch('/api/settings').then(r => r.json())
         setKeys(refresh)
       }
     } catch {
-      setError('Failed to save. Please try again.')
+      setMessage({ type: 'error', text: 'Failed to save. Please try again.' })
     } finally {
       setSaving(false)
     }
@@ -63,7 +64,7 @@ export function ApiKeysForm() {
 
   async function handleRemove(provider: 'anthropic' | 'openai') {
     setSaving(true)
-    setError(null)
+    setMessage(null)
 
     const body = provider === 'anthropic'
       ? { anthropic_api_key: '' }
@@ -76,11 +77,12 @@ export function ApiKeysForm() {
         body: JSON.stringify(body),
       })
       if (res.ok) {
+        setMessage({ type: 'success', text: `${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key removed.` })
         const refresh = await fetch('/api/settings').then(r => r.json())
         setKeys(refresh)
       }
     } catch {
-      setError('Failed to remove key.')
+      setMessage({ type: 'error', text: 'Failed to remove key.' })
     } finally {
       setSaving(false)
     }
@@ -97,10 +99,10 @@ export function ApiKeysForm() {
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center gap-2 text-sm text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400">
-          <AlertTriangle className="size-4 shrink-0" />
-          {error}
+      {message && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 flex items-center gap-2 text-sm text-foreground backdrop-blur-sm">
+          <AlertTriangle className="size-4 shrink-0 text-red-500" />
+          {message.text}
         </div>
       )}
 

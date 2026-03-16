@@ -46,12 +46,12 @@ export function buildReportHtml(report: ThreatIntelReport, siteUrl = 'https://ww
 
   <!-- Header -->
   <tr>
-    <td style="background:#0a0a0a;padding:24px 32px;border-radius:8px 8px 0 0;">
+    <td style="background:#18181b;padding:24px 32px;border-radius:8px 8px 0 0;">
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td>
             <img src="${siteUrl}/Logo-SECFORIT.png" alt="SECFORIT" width="160" height="44" style="height:36px;width:auto;display:block;" />
-            <span style="color:#737373;font-size:12px;display:block;margin-top:6px;">Threat Intelligence Report</span>
+            <span style="color:#a1a1aa;font-size:12px;display:block;margin-top:6px;">Threat Intelligence Report</span>
           </td>
           <td align="right">
             <span style="background:${tlpBg[report.classification.tlp]};color:${tlpColor[report.classification.tlp]};font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:0.5px;margin-right:6px;">TLP:${report.classification.tlp}</span>

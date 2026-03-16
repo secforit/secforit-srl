@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Key, Loader2, Check, AlertTriangle, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { Key, Loader2, AlertTriangle, Eye, EyeOff, Trash2 } from 'lucide-react'
 
 interface KeyState {
   anthropic_api_key: string | null
@@ -14,7 +14,7 @@ export function ApiKeysForm() {
   const [keys, setKeys] = useState<KeyState | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const [anthropicKey, setAnthropicKey] = useState('')
   const [openaiKey, setOpenaiKey] = useState('')
@@ -33,7 +33,7 @@ export function ApiKeysForm() {
 
   async function handleSave(provider: 'anthropic' | 'openai') {
     setSaving(true)
-    setMessage(null)
+    setError(null)
 
     const body = provider === 'anthropic'
       ? { anthropic_api_key: anthropicKey }
@@ -47,17 +47,15 @@ export function ApiKeysForm() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setMessage({ type: 'error', text: data.error })
+        setError(data.error)
       } else {
-        setMessage({ type: 'success', text: `${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key saved.` })
         if (provider === 'anthropic') setAnthropicKey('')
         else setOpenaiKey('')
-        // Refresh key state
         const refresh = await fetch('/api/settings').then(r => r.json())
         setKeys(refresh)
       }
     } catch {
-      setMessage({ type: 'error', text: 'Failed to save. Please try again.' })
+      setError('Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -65,7 +63,7 @@ export function ApiKeysForm() {
 
   async function handleRemove(provider: 'anthropic' | 'openai') {
     setSaving(true)
-    setMessage(null)
+    setError(null)
 
     const body = provider === 'anthropic'
       ? { anthropic_api_key: '' }
@@ -78,12 +76,11 @@ export function ApiKeysForm() {
         body: JSON.stringify(body),
       })
       if (res.ok) {
-        setMessage({ type: 'success', text: `${provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key removed.` })
         const refresh = await fetch('/api/settings').then(r => r.json())
         setKeys(refresh)
       }
     } catch {
-      setMessage({ type: 'error', text: 'Failed to remove key.' })
+      setError('Failed to remove key.')
     } finally {
       setSaving(false)
     }
@@ -100,14 +97,10 @@ export function ApiKeysForm() {
 
   return (
     <div className="space-y-6">
-      {message && (
-        <div className={`rounded-lg border px-4 py-3 flex items-center gap-2 text-sm ${
-          message.type === 'success'
-            ? 'border-green-200 bg-green-50 text-green-700 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400'
-            : 'border-red-200 bg-red-50 text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400'
-        }`}>
-          {message.type === 'success' ? <Check className="size-4 shrink-0" /> : <AlertTriangle className="size-4 shrink-0" />}
-          {message.text}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center gap-2 text-sm text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400">
+          <AlertTriangle className="size-4 shrink-0" />
+          {error}
         </div>
       )}
 
@@ -119,7 +112,7 @@ export function ApiKeysForm() {
             Anthropic API Key
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Required for CTI report generation with Claude models (Sonnet 4, Opus 4).
+            Required for CTI report generation with Claude models (Sonnet 4, Opus 4, Haiku 4.5).
           </p>
         </div>
         <div className="p-6">
@@ -175,7 +168,7 @@ export function ApiKeysForm() {
             OpenAI API Key
           </h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Reserved for future features. Not currently used.
+            Required for CTI report generation with OpenAI models (GPT-4.1, o3-mini).
           </p>
         </div>
         <div className="p-6">

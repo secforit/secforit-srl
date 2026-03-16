@@ -43,7 +43,7 @@ export default async function VulnerabilitiesPage() {
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/">
-            <Image src="/Logo-SECFORIT.png" alt="SECFORIT" width={160} height={44} className="h-9 w-auto" />
+            <Image src="/Logo-SECFORIT.png" alt="SECFORIT" width={180} height={50} className="h-10 md:h-12 w-auto" priority />
           </Link>
           <div className="flex items-center gap-3">
             <Link

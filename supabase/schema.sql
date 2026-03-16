@@ -5,12 +5,10 @@
 
 -- 1. Profiles table (public mirror of auth.users)
 create table if not exists public.profiles (
-  id                uuid primary key references auth.users (id) on delete cascade,
-  email             text,
-  anthropic_api_key text,
-  openai_api_key    text,
-  created_at        timestamptz default now() not null,
-  updated_at        timestamptz default now() not null
+  id         uuid primary key references auth.users (id) on delete cascade,
+  email      text,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
 );
 
 -- 2. Row Level Security
@@ -61,7 +59,39 @@ create trigger profiles_set_updated_at
   for each row execute procedure public.set_updated_at();
 
 -- ============================================================
--- Migration: Add API key columns (run if upgrading existing DB)
+-- 5. User API Keys (server-side only — NOT exposed to clients)
 -- ============================================================
--- alter table public.profiles add column if not exists anthropic_api_key text;
--- alter table public.profiles add column if not exists openai_api_key text;
+-- This table has RLS enabled with NO client policies.
+-- Only the service_role key (admin client) can read/write.
+-- This prevents browser-side JS from ever accessing stored keys.
+
+create table if not exists public.user_api_keys (
+  user_id           uuid primary key references auth.users (id) on delete cascade,
+  anthropic_api_key text,
+  openai_api_key    text,
+  created_at        timestamptz default now() not null,
+  updated_at        timestamptz default now() not null
+);
+
+-- Enable RLS but add NO policies — blocks all client (anon/authenticated) access.
+-- Only the service_role bypasses RLS.
+alter table public.user_api_keys enable row level security;
+
+-- Auto-update timestamp
+drop trigger if exists user_api_keys_set_updated_at on public.user_api_keys;
+create trigger user_api_keys_set_updated_at
+  before update on public.user_api_keys
+  for each row execute procedure public.set_updated_at();
+
+-- ============================================================
+-- Migration: Move API keys from profiles to user_api_keys
+-- (run if upgrading from the previous schema)
+-- ============================================================
+-- INSERT INTO public.user_api_keys (user_id, anthropic_api_key, openai_api_key)
+--   SELECT id, anthropic_api_key, openai_api_key FROM public.profiles
+--   WHERE anthropic_api_key IS NOT NULL OR openai_api_key IS NOT NULL
+--   ON CONFLICT (user_id) DO UPDATE SET
+--     anthropic_api_key = EXCLUDED.anthropic_api_key,
+--     openai_api_key = EXCLUDED.openai_api_key;
+-- ALTER TABLE public.profiles DROP COLUMN IF EXISTS anthropic_api_key;
+-- ALTER TABLE public.profiles DROP COLUMN IF EXISTS openai_api_key;

@@ -11,18 +11,17 @@ export async function GET() {
   }
 
   const admin = createAdminClient()
-  const { data: profile } = await admin
-    .from('profiles')
+  const { data: row } = await admin
+    .from('user_api_keys')
     .select('anthropic_api_key, openai_api_key')
-    .eq('id', user.id)
+    .eq('user_id', user.id)
     .single()
 
-  // Return masked keys so the frontend knows if they're set
   return NextResponse.json({
-    anthropic_api_key: maskKey(profile?.anthropic_api_key),
-    openai_api_key: maskKey(profile?.openai_api_key),
-    has_anthropic_key: !!profile?.anthropic_api_key,
-    has_openai_key: !!profile?.openai_api_key,
+    anthropic_api_key: maskKey(row?.anthropic_api_key),
+    openai_api_key: maskKey(row?.openai_api_key),
+    has_anthropic_key: !!row?.anthropic_api_key,
+    has_openai_key: !!row?.openai_api_key,
   })
 }
 
@@ -60,10 +59,14 @@ export async function PUT(req: NextRequest) {
   }
 
   const admin = createAdminClient()
+
+  // Upsert: insert if no row exists, update if it does
   const { error } = await admin
-    .from('profiles')
-    .update(updates)
-    .eq('id', user.id)
+    .from('user_api_keys')
+    .upsert(
+      { user_id: user.id, ...updates },
+      { onConflict: 'user_id' }
+    )
 
   if (error) {
     console.error('Failed to update API keys:', error)

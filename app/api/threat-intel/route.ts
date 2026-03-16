@@ -272,12 +272,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
     }
 
-    // Fetch user's API keys from profile
+    // Fetch user's API keys (server-only table, no client access)
     const admin = createAdminClient()
-    const { data: profile } = await admin
-      .from('profiles')
+    const { data: keys } = await admin
+      .from('user_api_keys')
       .select('anthropic_api_key, openai_api_key')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single()
 
     // Rate limit per user
@@ -299,13 +299,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Check that the user has the right API key for the selected provider
-    if (provider === 'anthropic' && !profile?.anthropic_api_key) {
+    if (provider === 'anthropic' && !keys?.anthropic_api_key) {
       return NextResponse.json(
         { error: 'No Anthropic API key configured. Go to Settings to add your key.' },
         { status: 403 }
       )
     }
-    if (provider === 'openai' && !profile?.openai_api_key) {
+    if (provider === 'openai' && !keys?.openai_api_key) {
       return NextResponse.json(
         { error: 'No OpenAI API key configured. Go to Settings to add your key.' },
         { status: 403 }
@@ -348,7 +348,7 @@ ${doc}`
 
     if (provider === 'anthropic') {
       const result = await callAnthropic(
-        profile!.anthropic_api_key!,
+        keys!.anthropic_api_key!,
         model as AnthropicModel,
         userContent,
         jsonSchema,
@@ -357,7 +357,7 @@ ${doc}`
       usage = result.usage
     } else {
       const result = await callOpenAI(
-        profile!.openai_api_key!,
+        keys!.openai_api_key!,
         model as OpenAIModel,
         userContent,
         jsonSchema,

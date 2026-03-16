@@ -1,24 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import { z } from 'zod'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import nodemailer from 'nodemailer'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { buildReportHtml, buildReportPlainText } from '@/lib/threat-intel-html'
 
 export const maxDuration = 120
 
-const client = new Anthropic()
+// ─── Model Registry ──────────────────────────────────────────────────────────
 
-// ─── Authorization ────────────────────────────────────────────────────────────
+const ANTHROPIC_MODELS = [
+  'claude-sonnet-4-20250514',
+  'claude-opus-4-20250514',
+  'claude-haiku-4-5-20251001',
+] as const
 
-function isAuthorized(email: string | undefined): boolean {
-  if (!email) return false
-  const allowed = (process.env.THREAT_INTEL_ALLOWED_EMAILS ?? '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean)
-  return allowed.includes(email.toLowerCase())
+const OPENAI_MODELS = [
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'o3-mini',
+] as const
+
+type AnthropicModel = typeof ANTHROPIC_MODELS[number]
+type OpenAIModel = typeof OPENAI_MODELS[number]
+
+function getProvider(model: string): 'anthropic' | 'openai' | null {
+  if ((ANTHROPIC_MODELS as readonly string[]).includes(model)) return 'anthropic'
+  if ((OPENAI_MODELS as readonly string[]).includes(model)) return 'openai'
+  return null
 }
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
@@ -27,41 +40,54 @@ const SYSTEM_PROMPT = `You are the CTI analyst behind SECFORIT — a cybersecuri
 
 ## HARD RULES — Non-negotiable
 
-1. **Do NOT fabricate anything.** No made-up IOCs, no invented URLs, no guessed version numbers. If you don't have it from the input or aren't dead certain from public sources, say "Not publicly disclosed" or "No data available." Empty arrays are always better than fake data.
-2. **IOCs:** Only include hashes, IPs, domains, or YARA rules that are publicly documented for THIS specific CVE. No IOCs? Leave arrays empty, explain in availability_note.
-3. **Threat actors:** Only attribute when there's solid public reporting. No speculation. No attribution? Empty array.
-4. **Detection queries:** Must logically detect THIS vulnerability's exploitation behavior. No generic filler. No invented field names or event IDs.
-5. **Dates:** ISO 8601 (YYYY-MM-DD). report_date = today from input. Don't guess patch dates.
-6. **Versions:** Only from the input or what you're certain about. Don't infer version ranges.
-7. **References:** Use URLs from input + standard patterns (NVD, CISA KEV, vendor advisories). Never fabricate a URL.
-8. **Related CVEs:** Only if same advisory, same component, or same batch. Don't pad.
+1. **ZERO FABRICATION.** This is the most important rule. Do NOT invent IOCs, URLs, version numbers, patch dates, KB article numbers, threat actor names, or any other factual data. If the input does not contain it and you are not 100% certain from well-known public sources, use "Not publicly disclosed" or "No data available." Empty arrays are ALWAYS better than plausible-sounding fake data.
+2. **IOCs:** Only include hashes, IPs, domains, file paths, or YARA rules that are publicly documented for THIS specific CVE with verifiable sources. If you cannot cite a specific source for an IOC, do not include it. No IOCs? Leave ALL IOC arrays empty and explain in availability_note why (e.g., "No public IOCs have been documented for this vulnerability as of the report date").
+3. **Threat actors:** Only attribute when there is solid, citable public reporting (e.g., named in a Mandiant/CrowdStrike/Microsoft report). No speculation, no "likely" attributions. No attribution? Return an empty array.
+4. **Detection queries:** Must logically detect THIS vulnerability's specific exploitation behavior. Use real, standard field names for the platform (e.g., Sysmon EventID 1, Windows Security EventID 4688). Never invent field names, event IDs, or registry paths. If you're unsure about the exact query syntax for a platform, say so rather than guess.
+5. **Dates:** ISO 8601 (YYYY-MM-DD) for ALL date fields. report_date = today from input. Copy dates from input exactly. Never guess or approximate patch release dates — use "Not available" if not in input.
+6. **Versions:** Only from the input or what you are certain about from vendor advisories. Never infer or expand version ranges beyond what's stated. Use "Not specified in available data" rather than guessing.
+7. **References:** ONLY use URLs from the input + these standard patterns: https://nvd.nist.gov/vuln/detail/CVE-XXXX-XXXXX, https://www.cisa.gov/known-exploited-vulnerabilities-catalog. For vendor advisories, only include URLs if they appear in the input references. NEVER construct or guess a vendor advisory URL.
+8. **Related CVEs:** Only include CVEs that appear in the same advisory, affect the same component in the same patch cycle, or are explicitly cross-referenced in the input. Do not pad with loosely related CVEs.
+9. **CVSS data:** Copy the CVSS score, vector, severity, and all breakdown fields EXACTLY from the input. Do not recalculate, round, or adjust any CVSS values. If no CVSS data is provided, state "No CVSS data available" in relevant fields.
+10. **CWE:** Use the exact CWE ID and name from the input. Do not substitute with a "more appropriate" CWE — use what the source provides.
+
+## Self-Check Before Submitting
+
+Before you submit the report, verify:
+- Every URL in references exists in the input or follows the NVD/CISA pattern above
+- Every IOC has a documented public source (if unsure, remove it)
+- CVSS score and vector match the input exactly
+- All dates match the input exactly
+- No version numbers were invented or expanded
+- Threat actors array is empty unless you can name the specific public report attributing them
+- Detection queries use real field names and event IDs for the stated platform
 
 ## What You Bring
 
-- CVSS v3.1 scoring and contextual risk beyond the number
-- MITRE ATT&CK Enterprise (exact IDs: TA####, T####, T####.###)
-- CISA KEV / BOD 22-01 context
-- Threat actor profiling when attribution exists
-- Detection engineering (SIEM, EDR, YARA, behavioral)
-- EU regulatory angle: NIS2, ISO 27001, GDPR where relevant
+- CVSS v3.1 contextual analysis beyond the raw score
+- MITRE ATT&CK Enterprise mapping with exact IDs (TA####, T####, T####.###)
+- CISA KEV / BOD 22-01 compliance context
+- Threat actor profiling when solid attribution exists
+- Detection engineering (SIEM queries, EDR indicators, YARA rules, behavioral patterns)
+- EU regulatory angle: NIS2, ISO 27001, GDPR implications where directly relevant
 
 ## Classification
 
 **TLP:** WHITE for public CVEs (most cases). GREEN/AMBER/RED only when context warrants.
 **Confidence:** High = well-documented, vendor confirmed, CVSS scored. Medium = confirmed but sparse detail. Low = early/unconfirmed.
-**Severity:** Mirror CVSS baseSeverity. No CVSS? Assess from vuln class + exploitation status.
+**Severity:** Mirror the CVSS baseSeverity from input exactly. No CVSS? Assess from vulnerability class + exploitation status.
 
 ## Analysis Approach
 
-**Technical:** Explain the actual flaw (root cause), how exploitation works in practice, and what an attacker realistically gets. No theoretical hand-waving.
-**MITRE ATT&CK:** Only map tactics/techniques you can justify for this specific vuln. Use exact IDs.
-**Remediation:** Calibrate urgency to CVSS + exploitation status. Patch versions from input only. Workarounds that actually work. Hardening that's relevant, not boilerplate.
-**Detection:** Relevant log sources, behavioral indicators, realistic queries. Be honest about detection gaps.
+**Technical:** Explain the actual flaw (root cause, vulnerability class), how exploitation works in practice, and what an attacker realistically achieves. Ground everything in the specific technology and component.
+**MITRE ATT&CK:** Only map tactics and techniques you can specifically justify for this vulnerability. Use exact technique IDs. Each mapping must include a clear relevance explanation.
+**Remediation:** Calibrate urgency to CVSS severity + exploitation status. Patch versions from input only — never guess. Workarounds must be technically actionable. Hardening measures must be relevant to the specific vulnerability class, not generic security advice.
+**Detection:** Specify exact log sources, realistic behavioral indicators, and platform-specific queries. Be explicit about detection gaps and blind spots. Every detection query must target behavior specific to this vulnerability's exploitation.
 
 ## Tone
 
-**Executive Summary:** 2-3 sentences. What it is, who's affected, is it exploited, what to do. Straight to the point.
-**Analyst Assessment:** Your expert take — real-world risk beyond CVSS, strategic implications, what to prioritize. Grounded in facts, delivered with conviction. No hedging for the sake of hedging — if the data is clear, say it clearly.
+**Executive Summary:** 2-3 sentences max. What it is, who's affected, is it actively exploited, what to do now. No filler.
+**Analyst Assessment:** Your expert interpretation — real-world risk beyond CVSS, strategic implications, what to prioritize and why. Grounded in facts, delivered with conviction. If the data is clear, say it clearly. If there's genuine uncertainty, acknowledge it precisely rather than hedging everything.
 
 Write like you're briefing a CISO who respects your judgment and doesn't want their time wasted.`
 
@@ -239,15 +265,20 @@ function isIntelRateLimited(userId: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    // Auth — must be authenticated + authorized
+    // Auth — must be authenticated
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
     }
-    if (!isAuthorized(user.email)) {
-      return NextResponse.json({ error: 'Your account is not authorized to generate threat intelligence reports.' }, { status: 403 })
-    }
+
+    // Fetch user's API keys from profile
+    const admin = createAdminClient()
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('anthropic_api_key, openai_api_key')
+      .eq('id', user.id)
+      .single()
 
     // Rate limit per user
     if (isIntelRateLimited(user.id)) {
@@ -261,12 +292,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Provide CVE data to analyze.' }, { status: 400 })
     }
 
-    // Whitelist allowed models
-    const ALLOWED_MODELS = [
-      'claude-sonnet-4-20250514',
-      'claude-opus-4-20250514',
-    ] as const
-    const selectedModel = ALLOWED_MODELS.includes(model) ? model : 'claude-sonnet-4-20250514'
+    // Determine provider and validate model
+    const provider = getProvider(model)
+    if (!provider) {
+      return NextResponse.json({ error: 'Unsupported model.' }, { status: 400 })
+    }
+
+    // Check that the user has the right API key for the selected provider
+    if (provider === 'anthropic' && !profile?.anthropic_api_key) {
+      return NextResponse.json(
+        { error: 'No Anthropic API key configured. Go to Settings to add your key.' },
+        { status: 403 }
+      )
+    }
+    if (provider === 'openai' && !profile?.openai_api_key) {
+      return NextResponse.json(
+        { error: 'No OpenAI API key configured. Go to Settings to add your key.' },
+        { status: 403 }
+      )
+    }
 
     const doc = buildCveDocument(cve_data)
     const today = new Date().toISOString().split('T')[0]
@@ -274,81 +318,180 @@ export async function POST(req: NextRequest) {
 
 Analyze the vulnerability data below and produce a structured CTI report using the threat_intel_report tool.
 
-KEY INSTRUCTIONS:
-- Use the provided data as your primary source of truth for ALL factual fields (CVE ID, CVSS score/vector, CWE, vendor, product, versions, dates, CISA KEV status, references). Copy factual data exactly — do not modify CVSS scores, version numbers, or dates.
-- Add your expert analysis for: root cause, exploitation mechanics, MITRE ATT&CK mapping, detection, remediation, and analyst assessment.
-- IOCs: only include what's publicly documented for THIS CVE. None known? Empty arrays + explain in availability_note.
-- Threat actors: only attribute with solid public evidence. Otherwise empty array.
-- References: use URLs from the input + standard source patterns (NVD, CISA KEV, vendor advisory). Never fabricate URLs.
-- Related CVEs: only if same advisory/component/batch. Don't pad.
-- Set report_date to "${today}".
+## CRITICAL ACCURACY REQUIREMENTS
+1. **Copy factual data EXACTLY from the input below.** This includes: CVE ID, CVSS score, CVSS vector string, CVSS breakdown values, CWE ID, vendor, product, version numbers, all dates, and CISA KEV fields. Do NOT recalculate, round, or "correct" any of these values.
+2. **References:** ONLY include URLs that appear in the input data below, plus these standard URLs:
+   - https://nvd.nist.gov/vuln/detail/${cve_data.id ?? '[CVE-ID]'}
+   - https://www.cisa.gov/known-exploited-vulnerabilities-catalog (only if the CVE is in KEV)
+   Do NOT construct vendor advisory URLs unless they appear in the input.
+3. **IOCs:** Leave ALL IOC arrays empty unless you are certain of publicly documented IOCs for THIS specific CVE. Explain in availability_note.
+4. **Threat actors:** Return empty array unless a specific public threat report (name the source) attributes activity to THIS CVE.
+5. **Set report_date to "${today}".**
+
+## YOUR EXPERT ANALYSIS (add value here)
+- Root cause analysis and exploitation mechanics specific to the technology
+- MITRE ATT&CK mapping with justifications
+- Detection queries using real platform field names and event IDs
+- Remediation prioritization calibrated to real-world risk
+- Analyst assessment with actionable strategic guidance
 
 ${doc}`
 
-    // Convert Zod schema to JSON Schema for Claude tool_use
+    // Convert Zod schema to JSON Schema
     const jsonSchema = zodToJsonSchema(ThreatIntelSchema, {
       $refStrategy: 'none',
       target: 'openApi3',
     })
 
-    const response = await client.messages.create({
-      model: selectedModel,
-      max_tokens: 16000,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userContent }],
-      tools: [{
-        name: 'threat_intel_report',
-        description: 'Submit the completed structured CTI report.',
-        input_schema: jsonSchema as Anthropic.Tool['input_schema'],
-      }],
-      tool_choice: { type: 'tool', name: 'threat_intel_report' },
-    })
+    let report: ThreatIntelReport
+    let usage = { input_tokens: 0, output_tokens: 0 }
 
-    // Extract the tool use block
-    const toolBlock = response.content.find(
-      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
-    )
-
-    if (!toolBlock) {
-      return NextResponse.json(
-        { error: 'The AI model declined to generate a report for this content.' },
-        { status: 422 }
+    if (provider === 'anthropic') {
+      const result = await callAnthropic(
+        profile!.anthropic_api_key!,
+        model as AnthropicModel,
+        userContent,
+        jsonSchema,
       )
-    }
-
-    // Validate against our Zod schema
-    const parsed = ThreatIntelSchema.safeParse(toolBlock.input)
-    if (!parsed.success) {
-      console.error('Schema validation failed:', parsed.error.issues)
-      return NextResponse.json(
-        { error: 'Report generation produced invalid data. Please try again.' },
-        { status: 422 }
+      report = result.report
+      usage = result.usage
+    } else {
+      const result = await callOpenAI(
+        profile!.openai_api_key!,
+        model as OpenAIModel,
+        userContent,
+        jsonSchema,
       )
+      report = result.report
+      usage = result.usage
     }
-
-    const report = parsed.data
 
     // Send report via email (fire-and-forget, don't block the response)
     sendReportEmail(report, user.email!).catch(err =>
       console.error('Failed to send threat intel email:', err)
     )
 
-    return NextResponse.json({
-      report,
-      usage: {
-        input_tokens: response.usage?.input_tokens ?? 0,
-        output_tokens: response.usage?.output_tokens ?? 0,
-      },
-    })
+    return NextResponse.json({ report, usage })
   } catch (err) {
     console.error('Threat intel error:', err)
     // Never leak internal error details to the client
     if (err instanceof Anthropic.APIError) {
       if (err.status === 401) {
-        return NextResponse.json({ error: 'AI service configuration error.' }, { status: 500 })
+        return NextResponse.json({ error: 'Invalid Anthropic API key. Please check your key in Settings.' }, { status: 401 })
+      }
+      if (err.status === 429) {
+        return NextResponse.json({ error: 'Anthropic API rate limit reached. Please try again later.' }, { status: 429 })
+      }
+    }
+    if (err instanceof OpenAI.APIError) {
+      if (err.status === 401) {
+        return NextResponse.json({ error: 'Invalid OpenAI API key. Please check your key in Settings.' }, { status: 401 })
+      }
+      if (err.status === 429) {
+        return NextResponse.json({ error: 'OpenAI API rate limit reached. Please try again later.' }, { status: 429 })
       }
     }
     return NextResponse.json({ error: 'Failed to generate report. Please try again.' }, { status: 500 })
+  }
+}
+
+// ─── Provider Calls ──────────────────────────────────────────────────────────
+
+async function callAnthropic(
+  apiKey: string,
+  model: AnthropicModel,
+  userContent: string,
+  jsonSchema: ReturnType<typeof zodToJsonSchema>,
+): Promise<{ report: ThreatIntelReport; usage: { input_tokens: number; output_tokens: number } }> {
+  const client = new Anthropic({ apiKey })
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 16000,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: userContent }],
+    tools: [{
+      name: 'threat_intel_report',
+      description: 'Submit the completed structured CTI report.',
+      input_schema: jsonSchema as Anthropic.Tool['input_schema'],
+    }],
+    tool_choice: { type: 'tool', name: 'threat_intel_report' },
+  })
+
+  const toolBlock = response.content.find(
+    (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
+  )
+
+  if (!toolBlock) {
+    throw new Error('Model declined to generate report')
+  }
+
+  const parsed = ThreatIntelSchema.safeParse(toolBlock.input)
+  if (!parsed.success) {
+    console.error('Schema validation failed:', parsed.error.issues)
+    throw new Error('Report generation produced invalid data')
+  }
+
+  return {
+    report: parsed.data,
+    usage: {
+      input_tokens: response.usage?.input_tokens ?? 0,
+      output_tokens: response.usage?.output_tokens ?? 0,
+    },
+  }
+}
+
+async function callOpenAI(
+  apiKey: string,
+  model: OpenAIModel,
+  userContent: string,
+  jsonSchema: ReturnType<typeof zodToJsonSchema>,
+): Promise<{ report: ThreatIntelReport; usage: { input_tokens: number; output_tokens: number } }> {
+  const client = new OpenAI({ apiKey })
+
+  const response = await client.chat.completions.create({
+    model,
+    max_completion_tokens: 16000,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userContent },
+    ],
+    tools: [{
+      type: 'function',
+      function: {
+        name: 'threat_intel_report',
+        description: 'Submit the completed structured CTI report.',
+        parameters: jsonSchema as Record<string, unknown>,
+        strict: true,
+      },
+    }],
+    tool_choice: { type: 'function', function: { name: 'threat_intel_report' } },
+  })
+
+  const toolCall = response.choices?.[0]?.message?.tool_calls?.[0]
+  if (!toolCall || toolCall.type !== 'function' || !toolCall.function?.arguments) {
+    throw new Error('Model declined to generate report')
+  }
+
+  let rawData: unknown
+  try {
+    rawData = JSON.parse(toolCall.function.arguments)
+  } catch {
+    throw new Error('Model returned invalid JSON')
+  }
+
+  const parsed = ThreatIntelSchema.safeParse(rawData)
+  if (!parsed.success) {
+    console.error('Schema validation failed:', parsed.error.issues)
+    throw new Error('Report generation produced invalid data')
+  }
+
+  return {
+    report: parsed.data,
+    usage: {
+      input_tokens: response.usage?.prompt_tokens ?? 0,
+      output_tokens: response.usage?.completion_tokens ?? 0,
+    },
   }
 }
 

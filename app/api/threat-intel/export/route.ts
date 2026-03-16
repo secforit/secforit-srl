@@ -4,24 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { buildReportHtml, buildReportPlainText } from '@/lib/threat-intel-html'
 import type { ThreatIntelReport } from '@/app/api/threat-intel/route'
 
-function isAuthorized(email: string | undefined): boolean {
-  if (!email) return false
-  const allowed = (process.env.THREAT_INTEL_ALLOWED_EMAILS ?? '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean)
-  return allowed.includes(email.toLowerCase())
-}
-
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
-    }
-    if (!isAuthorized(user.email)) {
-      return NextResponse.json({ error: 'Not authorized.' }, { status: 403 })
     }
 
     const body = await req.json()

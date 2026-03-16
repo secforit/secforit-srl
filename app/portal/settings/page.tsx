@@ -1,19 +1,19 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { ThreatIntelUpload } from '@/components/threat-intel-upload'
+import { logout } from '@/app/auth/actions'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { logout } from '@/app/auth/actions'
-import { ArrowLeft, LogOut, Zap } from 'lucide-react'
+import { ArrowLeft, LogOut, Settings } from 'lucide-react'
+import { ApiKeysForm } from '@/components/api-keys-form'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Threat Intel Generator | SECFORIT Portal',
+  title: 'Settings | SECFORIT Portal',
   robots: { index: false, follow: false },
 }
 
-export default async function ThreatIntelPage() {
+export default async function SettingsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -40,28 +40,26 @@ export default async function ThreatIntelPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-10 max-w-4xl">
+      <main className="container mx-auto px-4 py-10 max-w-2xl">
         <div className="mb-8">
           <Link
-            href="/portal/vulnerabilities"
+            href="/portal"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
           >
             <ArrowLeft className="size-4" />
-            Back to vulnerability feed
+            Back to portal
           </Link>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 mb-4 ml-4">
-            <Zap className="size-3.5 text-primary" />
-            <span className="text-xs text-muted-foreground">AI-powered analysis</span>
+            <Settings className="size-3.5 text-primary" />
+            <span className="text-xs text-muted-foreground">Configuration</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Threat Intelligence Generator</h1>
-          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-            Upload a vulnerability report, advisory, or research paper and receive a structured
-            threat intelligence report with MITRE ATT&CK mapping, IOCs, detection queries,
-            and remediation guidance.
+          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your API keys for AI-powered threat intelligence report generation.
           </p>
         </div>
 
-        <ThreatIntelUpload />
+        <ApiKeysForm />
       </main>
     </div>
   )

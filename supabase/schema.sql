@@ -5,10 +5,12 @@
 
 -- 1. Profiles table (public mirror of auth.users)
 create table if not exists public.profiles (
-  id         uuid primary key references auth.users (id) on delete cascade,
-  email      text,
-  created_at timestamptz default now() not null,
-  updated_at timestamptz default now() not null
+  id                uuid primary key references auth.users (id) on delete cascade,
+  email             text,
+  anthropic_api_key text,
+  openai_api_key    text,
+  created_at        timestamptz default now() not null,
+  updated_at        timestamptz default now() not null
 );
 
 -- 2. Row Level Security
@@ -57,3 +59,9 @@ drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
   before update on public.profiles
   for each row execute procedure public.set_updated_at();
+
+-- ============================================================
+-- Migration: Add API key columns (run if upgrading existing DB)
+-- ============================================================
+-- alter table public.profiles add column if not exists anthropic_api_key text;
+-- alter table public.profiles add column if not exists openai_api_key text;

@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ShieldAlert,
+  Settings,
 } from 'lucide-react'
 import type { Metadata } from 'next'
 
@@ -212,6 +213,13 @@ export default async function PortalPage() {
                 >
                   <ShieldAlert className="size-4" />
                   Vulnerability feed
+                </Link>
+                <Link
+                  href="/portal/settings"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-primary/5 hover:text-primary transition-colors duration-200"
+                >
+                  <Settings className="size-4" />
+                  API Keys &amp; Settings
                 </Link>
                 <Link
                   href="/contact"
